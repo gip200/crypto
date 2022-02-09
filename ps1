@@ -5,39 +5,38 @@
 import sys
 import json
 import binascii
-import random
+import secrets
 
 
-# Func to sort ip's
-#def sort_ips(ip_list):
-#    # List to split IPs in list of list
-#    sorted_ips = []
-#    for ip in ip_list:
-#        ip_split = [int(element) for element in ip.split(".")]
-#        sorted_ips.append(ip_split)
-#    sorted_ips.sort()
+####### Func to sort ip's
+####### def sort_ips(ip_list):
+#######    # List to split IPs in list of list
+#######    sorted_ips = []
+#######    for ip in ip_list:
+#######        ip_split = [int(element) for element in ip.split(".")]
+#######        sorted_ips.append(ip_split)
+#######    sorted_ips.sort()
 
-    # Join the list of list to IPs and append to final result
-#    result = []
-#    for ip_split in sorted_ips:
-#        ip_split = [str(element) for element in ip_split]
-#        ip = ".".join(ip_split)
-#        result.append(ip)
+######    # Join the list of list to IPs and append to final result
+######    result = []
+######    for ip_split in sorted_ips:
+######        ip_split = [str(element) for element in ip_split]
+######        ip = ".".join(ip_split)
+######        result.append(ip)
 
-#    # Return result
-#    return result
-
+######    # Return result
+######    return result
 
 inputs = json.load(sys.stdin)
 outputs = {}
 
-#problem 1
+# problem 1
 input_string = inputs["problem 1"]
 for i in range(len(input_string)):
     input_string[i] = input_string[i].upper()
 outputs["problem 1"] = input_string
 
-#problem 2
+# problem 2
 input_hex2 = inputs["problem 2"]
 output_string2 = []
 for i in range(len(input_hex2)):
@@ -47,38 +46,33 @@ for i in range(len(input_hex2)):
     output_string2.append(output_ascii)
 outputs["problem 2"] = output_string2
 
-
-#problem 3
+# problem 3
 input_hex3 = inputs["problem 3"]
 output_string3 = []
 split_hex3 = []
-added_hex3 = []
 concat_hex = ""
 preoutput_string3 = ""
+newstr = ""
 
-for i in range(len(input_hex3)):
-    input_hex3[i] = (input_hex3[i])
-    workinghex = input_hex3[i]
+for index1 in range(len(input_hex3)):
+    input_hex3[index1] = (input_hex3[index1])
+    workinghex = input_hex3[index1]
     #print(workinghex)
 
-    for index in range(0, len(workinghex), 2):
-        split_hex3.append(workinghex[index: index + 2])
-        #print(split_hex3)
+    split_hex3 = [workinghex[index2: index2 + 2] for index2 in range(0, len(workinghex), 2)]
+    #print(split_hex3)
 
-    for i in range(len(split_hex3)):
-        split_hex3[i] = (split_hex3[i])
-        hexintvalues = int(split_hex3[i],16)
-        #print(hexintvalues)
+    for index3 in range(len(split_hex3)):
+        split_hex3[index3] = hex(int((split_hex3[index3]),16) + 32 + index3).lstrip("0x")
+        concat_hex += split_hex3[index3]
+        newstr = concat_hex[-10:]
+        #print(concat_hex)
+        #print(newstr)
+    output_string3.append(newstr)
+        #output_string3.append(concat_hex.lstrip(" "))
 
-        added_hex = hex(hexintvalues + 32 + i).lstrip("0x")
-        preoutput_string3 += " " + added_hex
-        output_string3 = preoutput_string3.lstrip(" ")
 #print(output_string3)
-outputs["problem 3"] = [output_string3]
-
-
-
-
+outputs["problem 3"] = output_string3
 
 # problem 4
 input_strings_4 = inputs["problem 4"]
@@ -86,7 +80,7 @@ output_string_4 = []
 
 for index4 in range(len(input_strings_4)):
     input_strings_4[index4] = (input_strings_4[index4])
-    input_strings_4[index4] = random.randrange(0, input_strings_4[index4]-1)
+    input_strings_4[index4] = secrets.randbelow(input_strings_4[index4]-1)
     output_string_4.append(input_strings_4[index4])
 
 outputs["problem 4"] = output_string_4
