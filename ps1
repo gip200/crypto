@@ -8,24 +8,24 @@ import binascii
 import secrets
 
 
-####### Func to sort ip's
-####### def sort_ips(ip_list):
-#######    # List to split IPs in list of list
-#######    sorted_ips = []
-#######    for ip in ip_list:
-#######        ip_split = [int(element) for element in ip.split(".")]
-#######        sorted_ips.append(ip_split)
-#######    sorted_ips.sort()
+# Func to sort ip's
+#def sort_ips(ip_list):
+#    # List to split IPs in list of list
+#    sorted_ips = []
+#    for ip in ip_list:
+#        ip_split = [int(element) for element in ip.split(".")]
+#        sorted_ips.append(ip_split)
+#    sorted_ips.sort()
 
-######    # Join the list of list to IPs and append to final result
-######    result = []
-######    for ip_split in sorted_ips:
-######        ip_split = [str(element) for element in ip_split]
-######        ip = ".".join(ip_split)
-######        result.append(ip)
+    # Join the list of list to IPs and append to final result
+#    result = []
+#    for ip_split in sorted_ips:
+#        ip_split = [str(element) for element in ip_split]
+#        ip = ".".join(ip_split)
+#        result.append(ip)
 
-######    # Return result
-######    return result
+#    # Return result
+#    return result
 
 inputs = json.load(sys.stdin)
 outputs = {}
@@ -49,26 +49,33 @@ outputs["problem 2"] = output_string2
 # problem 3
 input_hex3 = inputs["problem 3"]
 output_string3 = []
+workinghex = {}
 split_hex3 = []
 concat_hex = ""
-preoutput_string3 = ""
+#preoutput_string3 = ""
 newstr = ""
 
 for index1 in range(len(input_hex3)):
     input_hex3[index1] = (input_hex3[index1])
     workinghex = input_hex3[index1]
-    #print(workinghex)
+    print(workinghex)
 
     split_hex3 = [workinghex[index2: index2 + 2] for index2 in range(0, len(workinghex), 2)]
-    #print(split_hex3)
+    print(split_hex3)
+    outpass = split_hex3
 
-    for index3 in range(len(split_hex3)):
-        split_hex3[index3] = hex(int((split_hex3[index3]),16) + 32 + index3).lstrip("0x")
-        concat_hex += split_hex3[index3]
-        newstr = concat_hex[-10:]
-        #print(concat_hex)
-        #print(newstr)
-    output_string3.append(newstr)
+    for index3 in range(len(outpass)):
+      outpass[index3] = (hex((int((outpass[index3]),16) + 32 + index3) % 256).lstrip("0x"))
+      print (split_hex3[index3])
+      print("Output: ", outpass[index3])
+      print("Concat hex:", concat_hex)
+      concat_hex += outpass[index3]
+      print(concat_hex)
+
+
+    output_string3.append(concat_hex)
+    concat_hex = ""
+
         #output_string3.append(concat_hex.lstrip(" "))
 
 #print(output_string3)
@@ -89,5 +96,5 @@ outputs["problem 4"] = output_string_4
 
 #output
 #json.dump(outputs, sys.stdout)
-print(json.dumps(outputs, indent="  "))
+#print(json.dumps(outputs, indent="  "))
 print()
