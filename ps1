@@ -58,19 +58,19 @@ newstr = ""
 for index1 in range(len(input_hex3)):
     input_hex3[index1] = (input_hex3[index1])
     workinghex = input_hex3[index1]
-    print(workinghex)
+    #print(workinghex)
 
     split_hex3 = [workinghex[index2: index2 + 2] for index2 in range(0, len(workinghex), 2)]
-    print(split_hex3)
+    #print(split_hex3)
     outpass = split_hex3
 
     for index3 in range(len(outpass)):
       outpass[index3] = (hex((int((outpass[index3]),16) + 32 + index3) % 256).lstrip("0x"))
-      print (split_hex3[index3])
-      print("Output: ", outpass[index3])
-      print("Concat hex:", concat_hex)
+      #print (split_hex3[index3])
+      #print("Output: ", outpass[index3])
+      #print("Concat hex:", concat_hex)
       concat_hex += outpass[index3]
-      print(concat_hex)
+      #print(concat_hex)
 
 
     output_string3.append(concat_hex)
@@ -96,5 +96,5 @@ outputs["problem 4"] = output_string_4
 
 #output
 #json.dump(outputs, sys.stdout)
-#print(json.dumps(outputs, indent="  "))
+print(json.dumps(outputs, indent="  "))
 print()
