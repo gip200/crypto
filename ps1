@@ -1,31 +1,9 @@
 #!/usr/bin/env python3
 
-#from nacl.secret import SecretBox
-#from nacl.exceptions import CryptoError
 import sys
 import json
 import binascii
 import secrets
-
-
-# Func to sort ip's
-#def sort_ips(ip_list):
-#    # List to split IPs in list of list
-#    sorted_ips = []
-#    for ip in ip_list:
-#        ip_split = [int(element) for element in ip.split(".")]
-#        sorted_ips.append(ip_split)
-#    sorted_ips.sort()
-
-    # Join the list of list to IPs and append to final result
-#    result = []
-#    for ip_split in sorted_ips:
-#        ip_split = [str(element) for element in ip_split]
-#        ip = ".".join(ip_split)
-#        result.append(ip)
-
-#    # Return result
-#    return result
 
 inputs = json.load(sys.stdin)
 outputs = {}
@@ -52,7 +30,6 @@ output_string3 = []
 workinghex = {}
 split_hex3 = []
 concat_hex = ""
-#preoutput_string3 = ""
 newstr = ""
 
 for index1 in range(len(input_hex3)):
@@ -67,16 +44,11 @@ for index1 in range(len(input_hex3)):
     for index3 in range(len(outpass)):
       outpass[index3] = (hex((int((outpass[index3]),16) + 32 + index3) % 256).lstrip("0x"))
       #print (split_hex3[index3])
-      #print("Output: ", outpass[index3])
-      #print("Concat hex:", concat_hex)
       concat_hex += outpass[index3]
       #print(concat_hex)
-
-
+      
     output_string3.append(concat_hex)
     concat_hex = ""
-
-        #output_string3.append(concat_hex.lstrip(" "))
 
 #print(output_string3)
 outputs["problem 3"] = output_string3
@@ -91,8 +63,6 @@ for index4 in range(len(input_strings_4)):
     output_string_4.append(input_strings_4[index4])
 
 outputs["problem 4"] = output_string_4
-
-
 
 #output
 #json.dump(outputs, sys.stdout)
