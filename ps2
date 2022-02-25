@@ -46,7 +46,7 @@ new_trades = (inputs["problem 1"]["new_trades"])
 #print()
 #print()
 
-#outputs["problem 1"] = output_string1
+outputs["problem 1"] = "1234567890"
 
 
 
@@ -90,8 +90,7 @@ for indexproblem2 in range(0, len(barray_new_ct2)):
 
 #convert the bytes back to hex and output new ciphertext
 outputs["problem 2"] = binascii.hexlify(bytes(output_new_pt)).decode()
-#outputs["problem 2"] = output_string2
-
+#outputs["problem 2"] = "1234567890"
 
 
 
@@ -105,7 +104,7 @@ todays_ct = (inputs["problem 3"]["todays_ct"])
 #print()
 #print()
 
-#outputs["problem 3"] = output_string3
+outputs["problem 3"] = "1234567890"
 
 # problem 4
 ##    original inputs
@@ -121,10 +120,10 @@ actual_num   = (inputs["problem 4"]["actual_num"])
 #print(expected_num)
 #print(actual_num)
 
-#outputs["problem 4"] = output_string_4
+outputs["problem 4"] = "1234567890"
 
 
 #output
-json.dump(outputs, sys.stdout)
-#print(json.dumps(outputs, indent="  "))
+#json.dump(outputs, sys.stdout)
+print(json.dumps(outputs, indent="  "))
 print()
