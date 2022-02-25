@@ -18,6 +18,16 @@ inputs = json.load(sys.stdin)
 outputs = {}
 
 # problem 1
+##    original inputs
+##
+##	"old_pt": "53204d5346543a20313030302020202053204141504c3a20313030302020202053204141504c3a203530302020202020",
+##	"old_ct": "5bd42617dcba4b899a58a9132701a0ff6f0a886dda3135c6a932e988a036d58d1149f91f2a0cf8ea48895c5fc86b5964",
+##	"op_1": "S",
+##	"co_1": "MSFT",
+##	"op_2": "S",
+##	"co_2": "AAPL",
+##	"new_trades": ["5bd42617dcba4b899a58a9132701a0ff", "5bd42617dcba4b899a58a9132701a0ff1149f91f2a0cf8ea48895c5fc86b5964b72d58edad70a743a071f2f6874c0469"]
+
 old_pt = (inputs["problem 1"]["old_pt"])
 old_ct = (inputs["problem 1"]["old_ct"])
 op_1 = (inputs["problem 1"]["op_1"])
@@ -25,14 +35,6 @@ co_1 = (inputs["problem 1"]["co_1"])
 op_2 = (inputs["problem 1"]["op_2"])
 co_2 = (inputs["problem 1"]["co_2"])
 new_trades = (inputs["problem 1"]["new_trades"])
-
-#"old_pt": "53204d5346543a20313030302020202053204141504c3a20313030302020202053204141504c3a203530302020202020",
-#"old_ct": "5bd42617dcba4b899a58a9132701a0ff6f0a886dda3135c6a932e988a036d58d1149f91f2a0cf8ea48895c5fc86b5964",
-
-#old_pt=bytes.fromhex(old_pt)
-#old_pt.decode("ascii")
-
-#print(old_pt.decode("ascii"))
 
 #print(old_pt)
 #print(old_ct)
@@ -55,6 +57,13 @@ new_trades = (inputs["problem 1"]["new_trades"])
 
 
 # problem 2
+##    original inputs
+##
+##     "old_pt": "53204150504c3a20313030302020202053204d5346543a20313030302020202053204150504c3a203530302020202020",
+##     "old_ct": "6f019a80b53a25e504a32842ca799eff242fa37b48ad1bf5c1664476f712508e2c234c773e489c0d688ad5f0e079f32f",
+##     "new_ct": "7e018c9fb25725e504a32842da799eff"
+##},
+
 old_pt2 = (inputs["problem 2"]["old_pt"])
 old_ct2 = (inputs["problem 2"]["old_ct"])
 new_ct2 = (inputs["problem 2"]["new_ct"])
@@ -87,6 +96,9 @@ outputs["problem 2"] = binascii.hexlify(bytes(output_new_pt)).decode()
 
 
 # problem 3
+##    original inputs
+##     "todays_ct": "ce40049882f906b49341d1f743da4bbc025a65e7b5daed60d6f114ee77ee8a454bedfadbdf526b3a47fc196f94d48311"
+
 todays_ct = (inputs["problem 3"]["todays_ct"])
 
 #print(todays_ct)
@@ -96,6 +108,11 @@ todays_ct = (inputs["problem 3"]["todays_ct"])
 #outputs["problem 3"] = output_string3
 
 # problem 4
+##    original inputs
+##     "trade_list": ["b7d5cd07031b1e73ebbf56426d5c4358", "c98903da300a0185a09ddfbf6b3b82fb"],
+##     "expected_num": [1000, 1000],
+##     "actual_num": [9000, 9999]
+
 trade_list   = (inputs["problem 4"]["trade_list"])
 expected_num = (inputs["problem 4"]["expected_num"])
 actual_num   = (inputs["problem 4"]["actual_num"])
