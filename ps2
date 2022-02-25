@@ -14,13 +14,8 @@ from Crypto.Cipher import AES
 #   return bytes(x ^ y for x, y in zip(a, b))
 
 
-key = secrets.token_bytes(16)
-print(key)
-ctx = AES.new(key, AES.MODE_ECB)
-
 inputs = json.load(sys.stdin)
 outputs = {}
-
 
 # problem 1
 old_pt = (inputs["problem 1"]["old_pt"])
@@ -39,15 +34,15 @@ new_trades = (inputs["problem 1"]["new_trades"])
 
 #print(old_pt.decode("ascii"))
 
-print(old_pt)
-print(old_ct)
-print(op_1)
-print(co_1)
-print(op_2)
-print(co_2)
-print(new_trades)
-print()
-print()
+#print(old_pt)
+#print(old_ct)
+#print(op_1)
+#print(co_1)
+#print(op_2)
+#print(co_2)
+#print(new_trades)
+#print()
+#print()
 
 #outputs["problem 1"] = output_string1
 
@@ -64,21 +59,39 @@ old_pt2 = (inputs["problem 2"]["old_pt"])
 old_ct2 = (inputs["problem 2"]["old_ct"])
 new_ct2 = (inputs["problem 2"]["new_ct"])
 
-print(old_pt2)
-print(old_ct2)
-print(new_ct2)
-print()
-print()
+#pull the hex values out as bytearrays
+barray_old_pt2 = bytearray.fromhex(old_pt2)
+#print(barray_old_pt2)
+barray_old_ct2 = bytearray.fromhex(old_ct2)
+#print(barray_old_ct2)
+barray_new_ct2 = bytearray.fromhex(new_ct2)
+#print(barray_new_ct2)
 
+#set new output variable
+output_new_pt = []
 
+# first, iteratively XOR the old plaintext and the old ciphertext
+for indexproblem2 in range(0, len(barray_new_ct2)):
+     #print(barray_old_pt2[indexproblem2])
+     #print(barray_old_ct2[indexproblem2])
+     xoroutput = barray_old_pt2[indexproblem2] ^ barray_old_ct2[indexproblem2]
+     #then output and concatenate the output of xor output and the new ciphertext
+     output_new_pt.append(xoroutput ^ barray_new_ct2[indexproblem2])
+     #print(output_new_pt)
+
+#convert the bytes back to hex and output new ciphertext
+outputs["problem 2"] = binascii.hexlify(bytes(output_new_pt)).decode()
 #outputs["problem 2"] = output_string2
+
+
+
 
 # problem 3
 todays_ct = (inputs["problem 3"]["todays_ct"])
 
-print(todays_ct)
-print()
-print()
+#print(todays_ct)
+#print()
+#print()
 
 #outputs["problem 3"] = output_string3
 
@@ -87,14 +100,14 @@ trade_list   = (inputs["problem 4"]["trade_list"])
 expected_num = (inputs["problem 4"]["expected_num"])
 actual_num   = (inputs["problem 4"]["actual_num"])
 
-print(trade_list)
-print(expected_num)
-print(actual_num)
+#print(trade_list)
+#print(expected_num)
+#print(actual_num)
 
 #outputs["problem 4"] = output_string_4
 
 
 #output
-#json.dump(outputs, sys.stdout)
+json.dump(outputs, sys.stdout)
 #print(json.dumps(outputs, indent="  "))
 print()
