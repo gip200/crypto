@@ -102,9 +102,21 @@ todays_ct = (inputs["problem 3"]["todays_ct"])
 
 #print(todays_ct)
 #print()
-#print()
+todays_ct_array = bytearray.fromhex(todays_ct)
+outputarray3 = bytearray()
 
-outputs["problem 3"] = "1234567890"
+for index3 in range(0, len(todays_ct_array)):
+     #iteratively XOR every byte with "17", which is XOR of ascii letters B(0x42) ^  S(Ox53)
+     if (index3 == 0 or (index3> 0 and index3 % 16 == 0 )):
+          outputarray3.append(todays_ct_array[index3] ^ 17)
+     # concatenate back the output new ciphertext with swapped call
+
+     else:
+          outputarray3.append(todays_ct_array[index3])
+     #else concatenate back the output ciphertext as it was
+     new_ct = binascii.hexlify(outputarray3).decode()
+
+outputs["problem 3"] = new_ct
 
 # problem 4
 ##    original inputs
