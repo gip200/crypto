@@ -101,7 +101,6 @@ outputs["problem 2"] = binascii.hexlify(bytes(output_new_pt)).decode()
 todays_ct = (inputs["problem 3"]["todays_ct"])
 
 #print(todays_ct)
-#print()
 todays_ct_array = bytearray.fromhex(todays_ct)
 outputarray3 = bytearray()
 
