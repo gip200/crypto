@@ -8,7 +8,187 @@ import binascii
 import secrets
 from Crypto.Cipher import AES
 
+#def xor_bytes(a, b):#!/usr/bin/env python3
+
+#from nacl.secret import SecretBox
+#from nacl.exceptions import CryptoError
+import sys
+import json
+import binascii
+import secrets
+from Crypto.Cipher import AES
+
 #def xor_bytes(a, b):
+#    assert len(a) == len(b)
+#    # the one-liner version, using a "generator expression" and the "zip iterator"
+#   return bytes(x ^ y for x, y in zip(a, b))
+
+
+inputs = json.load(sys.stdin)
+outputs = {}
+
+# problem 1
+##    original inputs
+##
+##	"old_pt": "53204d5346543a20313030302020202053204141504c3a20313030302020202053204141504c3a203530302020202020",
+##	"old_ct": "5bd42617dcba4b899a58a9132701a0ff6f0a886dda3135c6a932e988a036d58d1149f91f2a0cf8ea48895c5fc86b5964",
+##	"op_1": "S",
+##	"co_1": "MSFT",
+##	"op_2": "S",
+##	"co_2": "AAPL",
+##	"new_trades": ["5bd42617dcba4b899a58a9132701a0ff", "5bd42617dcba4b899a58a9132701a0ff1149f91f2a0cf8ea48895c5fc86b5964b72d58edad70a743a071f2f6874c0469"]
+
+old_pt = (inputs["problem 1"]["old_pt"])
+old_ct = (inputs["problem 1"]["old_ct"])
+op_1 = (inputs["problem 1"]["op_1"])
+co_1 = (inputs["problem 1"]["co_1"])
+op_2 = (inputs["problem 1"]["op_2"])
+co_2 = (inputs["problem 1"]["co_2"])
+new_trades = (inputs["problem 1"]["new_trades"])
+
+#print(old_pt)
+#print(old_ct)
+#print(op_1)
+#print(co_1)
+#print(op_2)
+#print(co_2)
+#print(new_trades)
+#print()
+#print()
+
+outputs["problem 1"] = "1234567890"
+
+
+
+
+
+
+
+
+
+# problem 2
+##    original inputs
+##
+##     "old_pt": "53204150504c3a20313030302020202053204d5346543a20313030302020202053204150504c3a203530302020202020",
+##     "old_ct": "6f019a80b53a25e504a32842ca799eff242fa37b48ad1bf5c1664476f712508e2c234c773e489c0d688ad5f0e079f32f",
+##     "new_ct": "7e018c9fb25725e504a32842da799eff"
+##},
+
+old_pt2 = (inputs["problem 2"]["old_pt"])
+old_ct2 = (inputs["problem 2"]["old_ct"])
+new_ct2 = (inputs["problem 2"]["new_ct"])
+
+#pull the hex values out as bytearrays
+barray_old_pt2 = bytearray.fromhex(old_pt2)
+#print(barray_old_pt2)
+barray_old_ct2 = bytearray.fromhex(old_ct2)
+#print(barray_old_ct2)
+barray_new_ct2 = bytearray.fromhex(new_ct2)
+#print(barray_new_ct2)
+
+#set new output variable
+output_new_pt = []
+
+# first, iteratively XOR the old plaintext and the old ciphertext
+for indexproblem2 in range(0, len(barray_new_ct2)):
+     #print(barray_old_pt2[indexproblem2])
+     #print(barray_old_ct2[indexproblem2])
+     xoroutput = barray_old_pt2[indexproblem2] ^ barray_old_ct2[indexproblem2]
+     #then output and concatenate the output of xor output and the new ciphertext
+     output_new_pt.append(xoroutput ^ barray_new_ct2[indexproblem2])
+     #print(output_new_pt)
+
+#convert the bytes back to hex and output new ciphertext
+outputs["problem 2"] = binascii.hexlify(bytes(output_new_pt)).decode()
+#outputs["problem 2"] = "1234567890"
+
+
+
+# problem 3
+##    original inputs
+##     "todays_ct": "ce40049882f906b49341d1f743da4bbc025a65e7b5daed60d6f114ee77ee8a454bedfadbdf526b3a47fc196f94d48311"
+
+todays_ct = (inputs["problem 3"]["todays_ct"])
+
+#print(todays_ct)
+#print()
+todays_ct_array = bytearray.fromhex(todays_ct)
+outputarray3 = bytearray()
+
+for index3 in range(0, len(todays_ct_array)):
+     #iteratively XOR every byte with "17", which is XOR of ascii letters B(0x42) ^  S(Ox53)
+     if (index3 == 0 or (index3> 0 and index3 % 16 == 0 )):
+          outputarray3.append(todays_ct_array[index3] ^ 17)
+     # concatenate back the output new ciphertext with swapped call
+
+     else:
+          outputarray3.append(todays_ct_array[index3])
+     #else concatenate back the output ciphertext as it was
+     new_ct = binascii.hexlify(outputarray3).decode()
+
+outputs["problem 3"] = new_ct
+
+# problem 4
+##    original inputs
+##     "trade_list": ["b7d5cd07031b1e73ebbf56426d5c4358", "c98903da300a0185a09ddfbf6b3b82fb"],
+##     "expected_num": [1000, 1000],
+##     "actual_num": [9000, 9999]
+
+trade_list   = (inputs["problem 4"]["trade_list"])
+expected_num = (inputs["problem 4"]["expected_num"])
+actual_num   = (inputs["problem 4"]["actual_num"])
+
+#print(trade_list)
+#print(expected_num)
+#print(actual_num)
+
+list_numbers = []
+output_tradelist=[]
+
+for index4a in range(0, len(expected_num)):
+    #assigning expected_num data to bytearray, collect the expected number of trades based on ascii position
+    barray_expected_num = bytearray('{0:<8}'.format(expected_num[index4a]).encode())
+    #print(barray_expected_num)
+    #assigning actual_num data to bytearray, collect the actual/target number of trades based on ascii position
+    barray_actual_num = bytearray('{0:<8}'.format(actual_num[index4a]).encode())
+    #print(barray_actual_num)
+    xornumber = bytearray()
+
+    for index4b in range(0, len(barray_expected_num)):
+        #xor and append the bytes for our change positions
+        xornumber.append(int(barray_expected_num[index4b]) ^ int(barray_actual_num[index4b]))
+    list_numbers.append(xornumber)
+    #print(list_numbers)
+
+for index4c in range(0, len(trade_list)):
+    #assigning tradelist(s) to bytearray
+    barray_tradelist = bytearray.fromhex(trade_list[index4c])
+    barray_output_tradelist = bytearray()
+
+    for index4d in range(0, len(barray_tradelist)):
+
+        if index4d == 0:
+            barray_output_tradelist.append (barray_tradelist[index4d] ^ int(b'0x42',16) ^ int(b'0x53', 16))
+            # iteratively XOR every tradelist byte with "17", which is XOR of ascii letters B(0x42) ^  S(Ox53), if POS 0
+
+        elif (index4d in range(1, 7)):
+            barray_output_tradelist.append(barray_tradelist[index4d])
+            # copy POS1-7 as is and append
+        else:
+            barray_output_tradelist.append(barray_tradelist[index4d] ^ list_numbers[index4c][index4d-8])
+            # in the POS beyond 7, XOR the original tradelist with the change list and append
+
+    output_tradelist.append(binascii.hexlify(barray_output_tradelist).decode())
+    # restore the list to a basic hex string for return to output
+
+outputs['problem 4'] = output_tradelist
+#outputs["problem 4"] = "1234567890"
+
+
+#output
+#json.dump(outputs, sys.stdout)
+print(json.dumps(outputs, indent="  "))
+print()
 #    assert len(a) == len(b)
 #    # the one-liner version, using a "generator expression" and the "zip iterator"
 #   return bytes(x ^ y for x, y in zip(a, b))
