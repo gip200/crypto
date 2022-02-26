@@ -46,15 +46,52 @@ new_trades = (inputs["problem 1"]["new_trades"])
 #print()
 #print()
 
-outputs["problem 1"] = "1234567890"
+largest_trade = 0;
+swap_1 = ''.join([f'{ord(c):x}' for c in op_1])
+swap_2 = ''.join([f'{ord(c):x}' for c in op_2])
+target_co = ''.join([f'{ord(c):x}' for c in co_1])
+replace_co = ''.join([f'{ord(c):x}' for c in co_2])
+target_ct = ""
+replace_ct = ""
+new_trades_ct = []
 
 
+#Divide old_pt, old_ct into 32 hex/16 byte length, fixed length of trade
+split_old_pt = [old_pt[i:i+32] for i in range(0, len(old_pt), 32)]
+split_old_ct = [old_ct[i:i+32] for i in range(0, len(old_ct), 32)]
+
+#Divide new_trades into 32 hex/16 byte length, fixed length of trade
+split_new_trades = [new_trades[i:i+32] for i in range(0, len(new_trades), 32)]
 
 
+#Loop for finding largest trade shares
+for index1a in range(len(split_old_pt)):
+    if replace_co in split_old_pt[index1a] and swap_2 in split_old_pt[index1a]:
+        if int(bytearray.fromhex(split_old_pt[index1a][16:26]).decode()) > int(largest_trade):
 
+            replace_ct = split_old_ct[index1a]
+            #print(replace_ct)
+            largest_trade = bytearray.fromhex(split_old_pt[index1a][16:26]).decode()
+            #print(largest_trade)
 
+#Loop to match/replace the trades
+for i in range(0, len(split_old_pt)):
+    if target_co in split_old_pt[i] and swap_1 in split_old_pt[i]:
+        target_ct = split_old_ct[i]
 
+        for i in range(0, len(split_new_trades)):
+            split_new_trades[i] = (split_new_trades[i])
 
+            if target_ct in new_trades[i]:
+                trade_1 = new_trades[1]
+                str(trade_1).replace(target_ct,replace_ct)
+                #print(trade_1)
+
+        new_trades_ct.append(replace_ct)
+        new_trades_ct.append(new_trades[i+1].replace(new_trades[i], replace_ct))
+
+outputs["problem 1"] = new_trades_ct
+#outputs["problem 1"] = "1234567890"
 
 # problem 2
 ##    original inputs
@@ -164,7 +201,7 @@ for index4c in range(0, len(trade_list)):
         elif (index4d in range(1, 7)):
             barray_output_tradelist.append(barray_tradelist[index4d])
             # copy/append POS1-7 as-is
-     else:
+        else:
             barray_output_tradelist.append(barray_tradelist[index4d] ^ list_numbers[index4c][index4d-8])
             # in the POS beyond 7, append the XOR of the original tradelist with the change list
 
