@@ -164,7 +164,7 @@ for index4c in range(0, len(trade_list)):
         elif (index4d in range(1, 7)):
             barray_output_tradelist.append(barray_tradelist[index4d])
             # copy/append POS1-7 as-is
-    else:
+        else:
             barray_output_tradelist.append(barray_tradelist[index4d] ^ list_numbers[index4c][index4d-8])
             # in the POS beyond 7, append the XOR of the original tradelist with the change list
 
