@@ -62,7 +62,7 @@ chunk_old_ct = [old_ct[index1b: index1b + 32] for index1b in range(0, len(old_ct
 #chunk new_trades into 32 hex/16 byte length, fixed length of trade
 chunk_new_trades = [new_trades[index1c: index1c + 32] for index1c in range(0, len(new_trades), 32)]
 
-#iteration to find largest share. Update/replace 'largest_trade' with the sequentially largest trade found
+#iteration to find largest share. Update 'largest_trade' with the sequentially largest trade
 for index1d in range(len(chunk_old_pt)):
     if replace_co in chunk_old_pt[index1d] and swap_2 in chunk_old_pt[index1d]:
         if int(bytearray.fromhex(chunk_old_pt[index1d][16:26]).decode()) > int(largest_trade):
