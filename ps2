@@ -55,43 +55,45 @@ target_ct = ""
 replace_ct = ""
 new_trades_ct = []
 
+#chunk old_pt, old_ct into 32 hex/16 byte length, fixed length of trade
+chunk_old_pt = [old_pt[index1a: index1a + 32] for index1a in range(0, len(old_pt), 32)]
+chunk_old_ct = [old_ct[index1b: index1b + 32] for index1b in range(0, len(old_ct), 32)]
 
-#Divide old_pt, old_ct into 32 hex/16 byte length, fixed length of trade
-split_old_pt = [old_pt[i:i+32] for i in range(0, len(old_pt), 32)]
-split_old_ct = [old_ct[i:i+32] for i in range(0, len(old_ct), 32)]
+#chunk new_trades into 32 hex/16 byte length, fixed length of trade
+chunk_new_trades = [new_trades[index1c: index1c + 32] for index1c in range(0, len(new_trades), 32)]
 
-#Divide new_trades into 32 hex/16 byte length, fixed length of trade
-split_new_trades = [new_trades[i:i+32] for i in range(0, len(new_trades), 32)]
+#iteration to find largest share. Update/replace 'largest_trade' with the sequentially largest trade found
+for index1d in range(len(chunk_old_pt)):
+    if replace_co in chunk_old_pt[index1d] and swap_2 in chunk_old_pt[index1d]:
+        if int(bytearray.fromhex(chunk_old_pt[index1d][16:26]).decode()) > int(largest_trade):
 
-
-#Loop for finding largest trade shares
-for index1a in range(len(split_old_pt)):
-    if replace_co in split_old_pt[index1a] and swap_2 in split_old_pt[index1a]:
-        if int(bytearray.fromhex(split_old_pt[index1a][16:26]).decode()) > int(largest_trade):
-
-            replace_ct = split_old_ct[index1a]
+            replace_ct = chunk_old_ct[index1d]
             #print(replace_ct)
-            largest_trade = bytearray.fromhex(split_old_pt[index1a][16:26]).decode()
+            replacement_operation_cipher = chunk_old_ct[index1d][0:1]
+            #print(replacement_operation_cipher)
+            largest_trade = bytearray.fromhex(chunk_old_pt[index1d][16:26]).decode()
             #print(largest_trade)
 
-#Loop to match/replace the trades
-for i in range(0, len(split_old_pt)):
-    if target_co in split_old_pt[i] and swap_1 in split_old_pt[i]:
-        target_ct = split_old_ct[i]
+#iteration to find, and then replace 'target_co' in old_pt, do the replace and reassemble the replace_ct
+for index1e in range(0, len(chunk_old_pt)):
+    if target_co in chunk_old_pt[index1e] and swap_1 in chunk_old_pt[index1e]:
+        target_ct = chunk_old_ct[index1e]
 
-        for i in range(0, len(split_new_trades)):
-            split_new_trades[i] = (split_new_trades[i])
+        for index1f in range(0, len(chunk_new_trades)):
+            chunk_new_trades[index1f] = (chunk_new_trades[index1f])
 
-            if target_ct in new_trades[i]:
+            if target_ct in new_trades[index1f]:
                 trade_1 = new_trades[1]
+                #print(trade_1)
                 str(trade_1).replace(target_ct,replace_ct)
                 #print(trade_1)
 
-        new_trades_ct.append(replace_ct)
-        new_trades_ct.append(new_trades[i+1].replace(new_trades[i], replace_ct))
+        #new_trades_ct.append(replace_ct)
+        new_trades_ct.append(new_trades[index1f+1].replace(new_trades[index1f], replace_ct))
 
 outputs["problem 1"] = new_trades_ct
 #outputs["problem 1"] = "1234567890"
+
 
 # problem 2
 ##    original inputs
