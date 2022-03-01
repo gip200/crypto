@@ -88,7 +88,7 @@ for index1e in range(0, len(chunk_old_pt)):
                 str(trade_1).replace(target_ct,replace_ct)
                 #print(trade_1)
 
-        #new_trades_ct.append(replace_ct)
+        new_trades_ct.append(replace_ct)
         new_trades_ct.append(new_trades[index1f+1].replace(new_trades[index1f], replace_ct))
 
 outputs["problem 1"] = new_trades_ct
