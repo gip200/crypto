@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+#from nacl.secret import SecretBox
+#from nacl.exceptions import CryptoError
+import sys
+import json
+import binascii
+import secrets
+from Crypto.Cipher import AES
+
+#def xor_bytes(a, b):
+#    assert len(a) == len(b)
+#    # the one-liner version, using a "generator expression" and the "zip iterator"
+#   return bytes(x ^ y for x, y in zip(a, b))
+
+
+#cmdargs = json.loads(sys.argv[1])
+#print cmdargs['cmd'], cmdargs['value']
+
+#$ bin/python demo.py '{"cmd":"sel_media","value":"5X7_photo_paper.p"}'
+#sel_media 5X7_photo_paper.p
+
+inputs = json.load(sys.stdin)
+outputs = {}
+
+# 11111111111111111111111111111111111111111111111111111111111111111111111111111
+# problem 1
+p1_password = (inputs["problem 1"]["password"])
+p1_salt    = (inputs["problem 1"]["salt"])
+
+outputs["problem 1"] = "1234567890"
+
+# 22222222222222222222222222222222222222222222222222222222222222222222222222222
+# problem 2
+p2_input = (inputs["problem 2"])
+
+outputs["problem 2"] = "1234567890"
+
+# 33333333333333333333333333333333333333333333333333333333333333333333333333333
+# problem 3
+p3_key  = (inputs["problem 3"]["key"])
+p3_data = (inputs["problem 3"]["data"])
+
+#outputs["problem 3"] = "1234567890"
+
+# 44444444444444444444444444444444444444444444444444444444444444444444444444444
+# problem 4
+p4_key  = (inputs["problem 4"]["key"])
+p4_data = (inputs["problem 4"]["data"])
+
+outputs["problem 4"] = "1234567890"
+
+# 55555555555555555555555555555555555555555555555555555555555555555555555555555
+# problem 5
+p5_keys      = (inputs["problem 5"]["keys"])
+p5_plaintext = (inputs["problem 5"]["plaintext"])
+
+outputs["problem 5"] = "1234567890"
+
+# 66666666666666666666666666666666666666666666666666666666666666666666666666666
+# problem 6
+p6_keys       = (inputs["problem 6"]["keys"])
+p6_ciphertext = (inputs["problem 6"]["ciphertext"])
+
+outputs["problem 6"] = "1234567890"
+
+# 77777777777777777777777777777777777777777777777777777777777777777777777777777
+# problem 7
+p7_key  = (inputs["problem 7"]["key"])
+p7_data = (inputs["problem 7"]["data"])
+
+outputs["problem 7"] = "1234567890"
+
+
+# 88888888888888888888888888888888888888888888888888888888888888888888888888888
+# problem 8
+p8_input = inputs["problem 8"]
+
+outputs["problem 8"] = "1234567890"
+
+# 99999999999999999999999999999999999999999999999999999999999999999999999999999
+# problem 9
+p9_input = inputs["problem 9"]
+
+outputs["problem 9"] = "1234567890"
+
+
+# 101010101010101010101010101010101010101010101010101010101010101010101010101010
+# problem 10
+p10_input = inputs["problem 10"]
+
+outputs["problem 10"] = "1234567890"
+
+# 11111111111111111111111111111111111111111111111111111111111111111111111111111
+# problem 11
+p11_input = inputs["problem 11"]
+
+outputs["problem 11"] = "1234567890"
+
+
+#output
+#json.dump(outputs, sys.stdout)
+print(json.dumps(outputs, indent="  "))
+print()
