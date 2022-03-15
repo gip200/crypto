@@ -167,11 +167,25 @@ outputs["problem 2"] = {
 
 
 
+#### "problem 3"
+#  "key": "f0976dc478d49e3e501a34c1bc0470d2"
+#  "data": "96812ae4e46f6394056a343cd24eabe9da96f03cf6f5ea697b7ca81db801605d306cebf586b15a2738dc45f0cae54f48c2de358a4afcfb190c8742d02142a69b"
 
+key = (inputs["problem 3"]["key"])
+data = (inputs["problem 3"]["data"])
 
+one = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
 
+outputs["problem 3"] = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
 
+#### "problem 4"
+#    "key": "367fa89eb52235e852133bf4ad7464d6"
+#    "data": "b892dc4550bf6f12cb972915b74c0c77a4de3c88cd77494cf1dd399fd00ec698e06f6632a1e51e3f735f02ea070c10540b8ded940e66f27e5195bb2867e5508c"
 
+key = (inputs["problem 4"]["key"])
+data = (inputs["problem 4"]["data"])
+
+outputs["problem 4"] = hmac256_round(bytes.fromhex(data),bytes.fromhex(key))
 
 #output
 #json.dump(outputs, sys.stdout)
