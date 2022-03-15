@@ -1,0 +1,9 @@
+outputs["problem 2"] = {
+    "validator": binascii.hexlify(kdf_key_schedule[0]).decode(),
+    "feistel":  binascii.hexlify(kdf_key_schedule[1]).decode(),
+                binascii.hexlify(kdf_key_schedule[2]).decode(),
+                binascii.hexlify(kdf_key_schedule[3]).decode(),
+                binascii.hexlify(kdf_key_schedule[4]).decode(),
+    "mac":      binascii.hexlify(kdf_key_schedule[5]).decode()),
+    "search_terms":binascii.hexlify(kdf_key_schedule[6]).decode()
+    }
