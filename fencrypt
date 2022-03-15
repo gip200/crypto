@@ -74,9 +74,18 @@ def hmac256_round(message, roundkey):
 
 
 
+#def feistel_4_pass_encrypt(key, pt, nonce):
+#    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+#    r1 = aes_encr_round(bytes.fromhex(pt),bytes.fromhex(k1))
+#    r2 = hmac256_round(r1, k2)
+#    r3 = aes_encr_round(r2, k3)
+#    r4 = hmac256_round(r3, k4)
+#    return aes_encr_round(r4, k5)
+
+
 def feistel_4_pass_encrypt(key, pt, nonce):
     k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
-    r1 = aes_encr_round(pt, k1)
+    r1 = aes_encr_round(bytes.fromhex(pt),bytes.fromhex(k1))
     r2 = hmac256_round(r1, k2)
     r3 = aes_encr_round(r2, k3)
     r4 = hmac256_round(r3, k4)
@@ -186,6 +195,24 @@ key = (inputs["problem 4"]["key"])
 data = (inputs["problem 4"]["data"])
 
 outputs["problem 4"] = hmac256_round(bytes.fromhex(data),bytes.fromhex(key))
+
+#### "problem 5"
+#    "keys": ["bded14df20bcbff95ad53d36f1076bb4","e10c7fe143ecdc73589ec187dc43fc9d","fb6f0f9487466c806f9e85b2eb7f1b8d","e082d2d95823992874ba60b259c678f8"
+#     "plaintext": "11de356b0e1867ae1bed2ec0afd569ea830a716ff64548124f466ff9c72e6b8783e46f1217fbe0e057bedaf4fbf9ce7824e650711384198d7af6493acd8c759d"
+keys = (inputs["problem 5"]["keys"])
+plaintext = (inputs["problem 5"]["plaintext"])
+
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+
+r1 = aes_encr_round(bytes.fromhex(plaintext), bytes.fromhex(k1))
+r2 = hmac256_round(bytes.fromhex(r1), bytes.fromhex(k2))
+r3 = aes_encr_round(bytes.fromhex(r2), bytes.fromhex(k3))
+r4 = hmac256_round(bytes.fromhex(r3), bytes.fromhex(k4))
+
+outputs["problem 5"] = r4
+
+
+
 
 #output
 #json.dump(outputs, sys.stdout)
