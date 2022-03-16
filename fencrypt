@@ -8,9 +8,9 @@ import hashlib
 import hmac
 from Crypto.Cipher import AES
 
-
-def xor_bytes(bl, b2):
-    return bytes([x ^ y for x, y in zip(bl, b2)])
+# General use XOR function given two byte strings
+def xor_bytes(bytes1, bytes2):
+    return bytes([x ^ y for x, y in zip(bytes1, bytes2)])
 
 
 def increment(valuetoincrement, amount):
@@ -73,43 +73,30 @@ def hmac256_round(message, roundkey):
     return binascii.hexlify(leftbytesout + rightbytesin).decode()
 
 
-
-#def feistel_4_pass_encrypt(key, pt, nonce):
-#    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
-#    r1 = aes_encr_round(bytes.fromhex(pt),bytes.fromhex(k1))
-#    r2 = hmac256_round(r1, k2)
-#    r3 = aes_encr_round(r2, k3)
-#    r4 = hmac256_round(r3, k4)
-#    return aes_encr_round(r4, k5)
-
-
-def feistel_4_pass_encrypt(key, pt, nonce):
+def four_pass_ENCRYPT(key, plaintext, nonce):
     k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
-    r1 = aes_encr_round(bytes.fromhex(pt),bytes.fromhex(k1))
+    r1 = aes_encr_round(plaintext, k1)
     r2 = hmac256_round(r1, k2)
     r3 = aes_encr_round(r2, k3)
     r4 = hmac256_round(r3, k4)
-    return aes_encr_round(r4, k5)
+    ciphertext = binascii.hexlify(r4).decode()
+    return ciphertext
 
 
-def dec_round(block, round):
-    lin = block[:16]
-    rin = block[16:]
-    rout = lin
-    lout = xor_bytes(one_ctr_block(round, lin), rin)
-    return lout + rout
-
-
-def multi_block_decrypt(key, ct, nonce):
-#   k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
-    r1 = dec_round(ct, k3)
-    r2 = dec_round(r1, k2)
-    r3 = dec_round(r2, k1)
-    return dec_round(r3, k0)
+def four_pass_DECRYPT(key, ciphertext, nonce):
+    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+    r1 = hmac256_round(ciphertext,k4)
+    r2 = aes_encr_round(r1, k3)
+    r3 = hmac256_round(r2, k2)
+    r4 = aes_encr_round(r3,k1)
+    plaintext = binascii.hexlify(r4).decode()
+    return plaintext
 
 ##############################################################################
+
 inputs = json.load(sys.stdin)
 outputs = {}
+
 
 #### {"problem 1"
 #    "password": "e09f8ed71b715ec29d7c6c4db2efbf6a",
@@ -225,8 +212,22 @@ r4 = aes_encr_round(bytes.fromhex(r3), bytes.fromhex(k1))
 
 outputs["problem 6"] = r4
 
+#### "problem 7" - decrypt
+# "key": "bfff3ed5101115977e79be0d4a8d0f3b",
+# "data": "3e669d9db69fa81a464d9ffec1ac9c3cf5aeea47e4b92bcddf137e767f45ded0e6c8c66ab4eff14a0952dfa33160e09c4e289f04decdf0f8321b8931c47c84d4"
+key = (inputs["problem 7"]["key"])
+data = (inputs["problem 7"]["data"])
 
-outputs["problem 7"] = "null"
+#def mac_hmac256_generation(message, roundkey):
+#    return bytes.fromhex(hmac.new(roundkey, message, hashlib.sha256).hexdigest().upper())
+
+output7 = (hmac.new(bytes.fromhex(key), bytes.fromhex(data), hashlib.sha256).hexdigest())
+#output7 = mac_hmac256_generation(bytes.fromhex(data),bytes.fromhex(key))
+
+
+outputs["problem 7"] = output7
+
+
 outputs["problem 8"] = "null"
 outputs["problem 9"] = "null"
 outputs["problem 10"] = "null"
