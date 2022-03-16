@@ -7,7 +7,226 @@ import secrets
 import hashlib
 import hmac
 from Crypto.Cipher import AES
+#!/usr/bin/env python3
 
+import sys
+import json
+import binascii
+import secrets
+import hashlib
+import hmac
+from Crypto.Cipher import AES
+
+
+def xor_bytes(bl, b2):
+    return bytes([x ^ y for x, y in zip(bl, b2)])
+
+
+def increment(valuetoincrement, amount):
+    #we use this to increment the 16byt nonce values by 1, and be able to handle overflow on FFs
+    try:
+       incremented = (((int.from_bytes(valuetoincrement, 'big') + amount)  ).to_bytes(16,"big"))
+    except OverflowError:
+        # value won't fit into the payload, wrap round to 0
+        incremented = (((int.from_bytes(valuetoincrement, 'big') + amount) % 256 ).to_bytes(16,"big"))
+    return incremented
+
+
+def one_ctr_block(key, nonce_plus_ctr):
+    ctx = AES.new(key, mode=AES.MODE_ECB)
+    return ctx.encrypt(nonce_plus_ctr)
+
+
+
+def kdf(base_key, nonce):
+    # We take base key, add nothing to first, increment by 1 for each key 1-6
+    return (
+        one_ctr_block(base_key, nonce0),
+        one_ctr_block(base_key, increment(nonce0,1)),
+        one_ctr_block(base_key, increment(nonce0,2)),
+        one_ctr_block(base_key, increment(nonce0,3)),
+        one_ctr_block(base_key, increment(nonce0,4)),
+        one_ctr_block(base_key, increment(nonce0,5)),
+        one_ctr_block(base_key, increment(nonce0,6)),
+    )
+
+
+def aes_encr_round(data, roundkey):
+    # left 16 is the IV/nonce, all rest beyond byte 16 will be XORd with keystream
+    # pass iv, increment per block on iv, to one_ctr_block function per block
+    leftbytesin = data[:16]
+    rightbytesin = data[16:]
+    rightbytesout = b''
+
+    # Split datastream into blocks of 16 bytes
+    block = [rightbytesin[i:i + 16] for i in range(0, len(rightbytesin), 16)]
+
+    # Now we iterate over each 16 byte block, incrementing iv by 1 for every block
+    for i in range(0, len(block)):
+        key=one_ctr_block(roundkey, increment(leftbytesin,i))
+        rightbytesout += (xor_bytes(key, block[i]))
+
+    return (binascii.hexlify(leftbytesin+rightbytesout).decode())
+
+
+
+def mac_hmac256_generation(message, roundkey):
+    return bytes.fromhex(hmac.new(roundkey, message, hashlib.sha256).hexdigest().upper())
+
+def hmac256_round(message, roundkey):
+    leftbytesin = message[:16]
+    rightbytesin = message[16:]
+    # left 16 is the message and will be XORd with keystream, all rest beyond byte 16 is untouched
+    leftbytesout = xor_bytes(mac_hmac256_generation(rightbytesin, roundkey), leftbytesin)
+    return binascii.hexlify(leftbytesout + rightbytesin).decode()
+
+def feistel_4_pass_encrypt(key, plaintext, nonce):
+    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+    r1 = aes_encr_round(bytes.fromhex(plaintext),bytes.fromhex(k1))
+    r2 = hmac256_round(bytes.fromhex(r1), bytes.fromhex(k2))
+    r3 = aes_encr_round(bytes.fromhex(r2), bytes.fromhex(k3))
+    r4 = hmac256_round(bytes.fromhex(r3), bytes.fromhex(k4))
+    return aes_encr_round(binascii.hexlify(r4).decode(), k5)
+
+def feistel_4_pass_decrypt(key, ciphertext, nonce):
+    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+    r1 = hmac256_round(bytes.fromhex(ciphertext), bytes.fromhex(k4))
+    r2 = aes_dec_round(bytes.fromhex(r2), bytes.fromhex(k3))
+    r3 = hmac256_round(bytes.fromhex(r3), bytes.fromhex(k2))
+    r4 = aes_dec_round(bytes.fromhex(r4), bytes.fromhex(k1))
+    return dec_round(r5, k0)
+
+##############################################################################
+inputs = json.load(sys.stdin)
+outputs = {}
+
+#### {"problem 1" - master key
+#    "password": "e09f8ed71b715ec29d7c6c4db2efbf6a",
+#    "salt": "e95af5ec95b703b9fdb119a565df5012"}
+
+password = (inputs["problem 1"]["password"])
+salt = (inputs["problem 1"]["salt"])
+
+master_key_bytes = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), 250000, 32)
+master_key = binascii.hexlify(master_key_bytes).decode()
+outputs["problem 1"] = master_key
+
+#### "problem 2" - kdf key schedule
+#   masterkey: "6908d3676fbc19db7c4487f0b3c36c9efefd3168b410e98f0dca8c4cf27f9b68"
+master_key = (inputs["problem 2"])
+
+# Use 32-byte master key to generate a series of key material. Use left/first 16 bytes of output to key AES in CTR(counter) mode.
+# The right/last 16 bytes use as the initial counter block. Note that, some implementations of counter mode want only an
+# eight byte nonce, and start the second eight bytes zeroed out. You will not do this-- the initial value of the counter
+# block should be the full 16 bytes.
+
+base_key = bytes.fromhex(master_key)[:16]     # the left 16bytes-this will be used as key in AES-CTR mode
+nonce0 = bytes.fromhex(master_key)[16:]       # the right 16bytes-this will be the initial nonce/IV
+
+#test nonce to check increment and rollover from all FFFFFFFFFFFFFFFF
+#nonce0 = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+#nonce1 = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
+# Test - create all the nonce keys for kdf schedule (increment nonce + 1), 7 total keys, so 7 nonces needed
+#nonce1 = increment(nonce0,1)
+#nonce2 = increment(nonce0,2)
+#nonce3 = increment(nonce0,3)
+#nonce4 = increment(nonce0,4)
+#nonce5 = increment(nonce0,5)
+#nonce6 = increment(nonce0,6)
+
+#print("NONCE0:", nonce0)
+#print("NONCE1:", nonce1)
+#print("NONCE2:", nonce2)
+#print("NONCE3:", nonce3)
+#print("NONCE4:", nonce4)
+#print("NONCE5:", nonce5)
+#print("NONCE6:", nonce6)
+#print()
+
+kdf_key_schedule = kdf(base_key, nonce0)
+#print("KDF_Schedule: ",kdf_key_schedule)
+#print("validator", binascii.hexlify(kdf_key_schedule[0]).decode())
+#print("feistel", binascii.hexlify(kdf_key_schedule[1]).decode(), binascii.hexlify(kdf_key_schedule[2]).decode(), binascii.hexlify(kdf_key_schedule[3]).decode(), binascii.hexlify(kdf_key_schedule[4]).decode())
+#print("mac", binascii.hexlify(kdf_key_schedule[5]).decode())
+#print("search_terms", binascii.hexlify(kdf_key_schedule[6]).decode())
+#print()
+
+
+outputs["problem 2"] = {
+    "validator": binascii.hexlify(kdf_key_schedule[0]).decode(),
+    "feistel":  (binascii.hexlify(kdf_key_schedule[1]).decode(),
+                binascii.hexlify(kdf_key_schedule[2]).decode(),
+                binascii.hexlify(kdf_key_schedule[3]).decode(),
+                binascii.hexlify(kdf_key_schedule[4]).decode()),
+    "mac":      binascii.hexlify(kdf_key_schedule[5]).decode(),
+    "search_terms":binascii.hexlify(kdf_key_schedule[6]).decode()
+    }
+
+
+
+#### "problem 3" = aes, one round
+#  "key": "f0976dc478d49e3e501a34c1bc0470d2"
+#  "data": "96812ae4e46f6394056a343cd24eabe9da96f03cf6f5ea697b7ca81db801605d306cebf586b15a2738dc45f0cae54f48c2de358a4afcfb190c8742d02142a69b"
+
+key = (inputs["problem 3"]["key"])
+data = (inputs["problem 3"]["data"])
+
+one = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
+
+outputs["problem 3"] = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
+
+#### "problem 4" - hmac, one round
+#    "key": "367fa89eb52235e852133bf4ad7464d6"
+#    "data": "b892dc4550bf6f12cb972915b74c0c77a4de3c88cd77494cf1dd399fd00ec698e06f6632a1e51e3f735f02ea070c10540b8ded940e66f27e5195bb2867e5508c"
+
+key = (inputs["problem 4"]["key"])
+data = (inputs["problem 4"]["data"])
+
+outputs["problem 4"] = hmac256_round(bytes.fromhex(data),bytes.fromhex(key))
+
+#### "problem 5" - feistel encrypt, all 4 rounds
+#    "keys": ["bded14df20bcbff95ad53d36f1076bb4","e10c7fe143ecdc73589ec187dc43fc9d","fb6f0f9487466c806f9e85b2eb7f1b8d","e082d2d95823992874ba60b259c678f8"
+#     "plaintext": "11de356b0e1867ae1bed2ec0afd569ea830a716ff64548124f466ff9c72e6b8783e46f1217fbe0e057bedaf4fbf9ce7824e650711384198d7af6493acd8c759d"
+keys = (inputs["problem 5"]["keys"])
+plaintext = (inputs["problem 5"]["plaintext"])
+
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+
+r1 = aes_encr_round(bytes.fromhex(plaintext), bytes.fromhex(k1))
+r2 = hmac256_round(bytes.fromhex(r1), bytes.fromhex(k2))
+r3 = aes_encr_round(bytes.fromhex(r2), bytes.fromhex(k3))
+r4 = hmac256_round(bytes.fromhex(r3), bytes.fromhex(k4))
+outputs["problem 5"] = r4
+
+
+#### "problem 6" - decrypt
+#"keys": "9136c13f5ba72c34b2fc5986fcb5e015", "bca81342ecca0b400fcf24b7e5144fa7", "8ef064dc978a1d440bc5bd85e12ae3f7", "0de83c15ff013afe3e761a9849e1722d"
+#ciphertext": "cc31e9422c9cd4cdab8ff29e2c8db4ec457afa5142ee78702c4c898ed10c616be9053ed5213445d155a816937fbffa2f59027a2ef6fd6edc76fc008a2fb63fe1"
+keys = (inputs["problem 6"]["keys"])
+ciphertext = (inputs["problem 6"]["ciphertext"])
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+
+r1 = hmac256_round(bytes.fromhex(ciphertext), bytes.fromhex(k4))
+r2 = aes_encr_round(bytes.fromhex(r1), bytes.fromhex(k3))
+r3 = hmac256_round(bytes.fromhex(r2), bytes.fromhex(k2))
+r4 = aes_encr_round(bytes.fromhex(r3), bytes.fromhex(k1))
+outputs["problem 6"] = r4
+
+
+
+
+
+outputs["problem 7"] = "null"
+outputs["problem 8"] = "null"
+outputs["problem 9"] = "null"
+outputs["problem 10"] = "null"
+outputs["problem 11"] = "null"
+
+#output
+#json.dump(outputs, sys.stdout)
+print(json.dumps(outputs, indent="  "))
+print()
 
 def xor_bytes(bl, b2):
     return bytes([x ^ y for x, y in zip(bl, b2)])
