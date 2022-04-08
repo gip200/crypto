@@ -80,7 +80,7 @@ for i in range(2, lambda_n):
         e = lambda_n + 1
 
 
-print(e)
+#print(e)
 
 #print(output2)
 outputs["problem 2"] = e
