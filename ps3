@@ -124,5 +124,5 @@ outputs["problem 5"] = "42"
 
 #output
 #json.dump(outputs, sys.stdout)
-#print(json.dumps(outputs, indent="  "))
+print(json.dumps(outputs, indent="  "))
 print()
