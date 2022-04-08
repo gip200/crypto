@@ -4,14 +4,14 @@
 #from nacl.exceptions import CryptoError
 import sys
 import json
+import math
 import binascii
 import secrets
+import random
 from Crypto.Cipher import AES
 
-#def xor_bytes(a, b):
-#    assert len(a) == len(b)
-#    # the one-liner version, using a "generator expression" and the "zip iterator"
-#   return bytes(x ^ y for x, y in zip(a, b))
+def lcm(a,b):
+	return abs(a*b) // math.gcd(a,b)
 
 
 inputs = json.load(sys.stdin)
@@ -54,8 +54,6 @@ for index1 in range(len(nums)):
 outputs["problem 1"] = output_string_1
 
 
-
-
 ## problem 2
 ##
 ##   "problem 2":
@@ -66,9 +64,17 @@ outputs["problem 1"] = output_string_1
 ##
 ##  OUTPUT:     "problem 2" : 7,
 
-input2 = (inputs["problem 2"])
+p = (inputs["problem 2"]["p"])
+q = (inputs["problem 2"]["p"])
+output2=''
 
-#outputs["problem 2"] = "42"
+if p > q:
+    output2 = p
+else:
+    output2 = q
+
+#print(output2)
+outputs["problem 2"] = output2
 
 
 ## problem 3
@@ -82,7 +88,7 @@ input2 = (inputs["problem 2"])
 
 input3 = (inputs["problem 3"])
 
-#outputs["problem 3"] = "42"
+outputs["problem 3"] = "42"
 
 
 
@@ -98,7 +104,7 @@ input3 = (inputs["problem 3"])
 
 input4 = (inputs["problem 4"])
 
-#outputs["problem 4"] = "42"
+outputs["problem 4"] = "42"
 
 
 ## problem 5
