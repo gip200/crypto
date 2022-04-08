@@ -27,9 +27,39 @@ outputs = {}
 ##
 ##  OUTPUT:     "problem 1" : [true, false, true, false],
 
-nums = (inputs["problem 1"]["nums"])
 
-outputs["problem 1"] = "true, false, true, false"
+#### code adapted from https://www.programiz.com/python-programming/examples/prime-number
+nums = (inputs["problem 1"]["nums"])
+output_string_1 = []
+
+for index1 in range(len(nums)):
+    num = nums[index1]
+    #print(num)
+    # define a flag variable
+    flag = False
+
+    # prime numbers are greater than 1
+    if num > 1:
+        # check for factors
+        for i in range(2, num):
+            if (num % i) == 0:
+                # if factor is found, set flag to True
+                flag = True
+                # break out of loop
+                break
+
+    # check if flag is True
+    if flag:
+        output = 'true'
+    else:
+        output='false'
+    output_string_1.append(output)
+
+#print(output_string_1)
+outputs["problem 1"] = output_string_1
+
+
+
 
 ## problem 2
 ##
@@ -94,5 +124,5 @@ outputs["problem 5"] = "42"
 
 #output
 #json.dump(outputs, sys.stdout)
-print(json.dumps(outputs, indent="  "))
+#print(json.dumps(outputs, indent="  "))
 print()
