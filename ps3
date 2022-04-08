@@ -5,7 +5,7 @@
 import sys
 import json
 import math
-import binascii
+#import binascii
 import secrets
 import random
 from Crypto.Cipher import AES
@@ -65,25 +65,27 @@ outputs["problem 1"] = output_string_1
 ##  OUTPUT:     "problem 2" : 7,
 
 p = (inputs["problem 2"]["p"])
-q = (inputs["problem 2"]["p"])
+q = (inputs["problem 2"]["q"])
 output2=''
 
 n = p * q
 lambda_n = lcm(p - 1, q - 1)
-#print(lambda_n)
 
-# check for factors
-for i in range(2, lambda_n):
-    if (lambda_n % i) == 0:
-        e = lambda_n
+e_list = []
+e = 2
+
+while e < lambda_n:
+    if math.gcd(e, lambda_n) == 1:
+        e_list.append(e)
+        e = e + 1
     else:
-        e = lambda_n + 1
+        e = e + 1
 
-
-#print(e)
+#take smallest prime of e list
+output2 = e_list[0]
 
 #print(output2)
-outputs["problem 2"] = e
+outputs["problem 2"] = output2
 
 
 ## problem 3
