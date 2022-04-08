@@ -48,12 +48,7 @@ for index1 in range(len(nums)):
                 # break out of loop
                 break
 
-    # check if flag is True
-    if flag:
-        output = 'true'
-    else:
-        output='false'
-    output_string_1.append(output)
+    output_string_1.append(flag)
 
 #print(output_string_1)
 outputs["problem 1"] = output_string_1
@@ -73,7 +68,7 @@ outputs["problem 1"] = output_string_1
 
 input2 = (inputs["problem 2"])
 
-outputs["problem 2"] = "42"
+#outputs["problem 2"] = "42"
 
 
 ## problem 3
@@ -87,7 +82,7 @@ outputs["problem 2"] = "42"
 
 input3 = (inputs["problem 3"])
 
-outputs["problem 3"] = "42"
+#outputs["problem 3"] = "42"
 
 
 
@@ -103,7 +98,7 @@ outputs["problem 3"] = "42"
 
 input4 = (inputs["problem 4"])
 
-outputs["problem 4"] = "42"
+#outputs["problem 4"] = "42"
 
 
 ## problem 5
@@ -118,7 +113,7 @@ outputs["problem 4"] = "42"
 
 input5 = (inputs["problem 5"])
 
-outputs["problem 5"] = "42"
+#outputs["problem 5"] = "42"
 
 
 
