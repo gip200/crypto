@@ -68,13 +68,22 @@ p = (inputs["problem 2"]["p"])
 q = (inputs["problem 2"]["p"])
 output2=''
 
-if p > q:
-    output2 = p
-else:
-    output2 = q
+n = p * q
+lambda_n = lcm(p - 1, q - 1)
+#print(lambda_n)
+
+# check for factors
+for i in range(2, lambda_n):
+    if (lambda_n % i) == 0:
+        e = lambda_n
+    else:
+        e = lambda_n + 1
+
+
+print(e)
 
 #print(output2)
-outputs["problem 2"] = output2
+outputs["problem 2"] = e
 
 
 ## problem 3
