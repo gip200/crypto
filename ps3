@@ -144,8 +144,11 @@ outputs["problem 3"] = d
 
 input4 = (inputs["problem 4"])
 
-outputs["problem 4"] = "42"
+e = (inputs["problem 4"]["e"])
+n = (inputs["problem 4"]["n"])
+x = (inputs["problem 4"]["x"])
 
+outputs["problem 4"] = pow(x, e) % n
 
 ## problem 5
 ##
@@ -159,9 +162,17 @@ outputs["problem 4"] = "42"
 
 input5 = (inputs["problem 5"])
 
-#outputs["problem 5"] = "42"
 
+p = (inputs["problem 5"]["p"])
+q = (inputs["problem 5"]["q"])
+y = (inputs["problem 5"]["y"])
+output_string_5 = []
 
+n = lcm(p, q)
+l = lcm(p - 1, q - 1)
+d = modinv(p, l)
+
+outputs["problem 5"] = pow(y, d) % n
 
 #output
 #json.dump(outputs, sys.stdout)
