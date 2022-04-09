@@ -168,7 +168,7 @@ q = (inputs["problem 5"]["q"])
 y = (inputs["problem 5"]["y"])
 output_string_5 = []
 
-n = lcm(p, q)
+n = p * q
 l = lcm(p - 1, q - 1)
 d = modinv(p, l)
 
