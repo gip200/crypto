@@ -5,13 +5,19 @@
 import sys
 import json
 import math
-#import binascii
+import binascii
 import secrets
 import random
 from Crypto.Cipher import AES
 
 def lcm(a,b):
-	return abs(a*b) // math.gcd(a,b)
+	return abs(a*b) // math.gcd(a, b)
+
+def modinv(e,l):
+	for x in range(1,l):
+		if (e * x) % l == 1:
+			return x
+	raise Exception("No inverse found")
 
 
 inputs = json.load(sys.stdin)
@@ -68,24 +74,25 @@ p = (inputs["problem 2"]["p"])
 q = (inputs["problem 2"]["q"])
 output2=''
 
+# inspiration from https://crypto.stackexchange.com/questions/13166/method-to-calculating-e-in-rsa
 n = p * q
-lambda_n = lcm(p - 1, q - 1)
+l = lcm(p - 1, q - 1)
 
 e_list = []
 e = 2
 
-while e < lambda_n:
-    if math.gcd(e, lambda_n) == 1:
+while e < l:
+    if math.gcd(e, l) == 1:
         e_list.append(e)
         e = e + 1
     else:
         e = e + 1
 
-#take smallest prime of e list
-output2 = e_list[0]
+#take smallest prime of e_list
+small_e = e_list[0]
 
 #print(output2)
-outputs["problem 2"] = output2
+outputs["problem 2"] = small_e
 
 
 ## problem 3
@@ -97,9 +104,31 @@ outputs["problem 2"] = output2
 ##    },
 ##  OUTPUT:     "problem 3" : 13,
 
-input3 = (inputs["problem 3"])
+p = (inputs["problem 3"]["p"])
+q = (inputs["problem 3"]["q"])
 
-outputs["problem 3"] = "42"
+# inspiration from https://crypto.stackexchange.com/questions/13166/method-to-calculating-e-in-rsa
+n = p * q
+l = lcm(p - 1, q - 1)
+
+e_list = []
+e = 2
+
+while e < l:
+    if math.gcd(e, l) == 1:
+        e_list.append(e)
+        e = e + 1
+    else:
+        e = e + 1
+
+small_e = e_list[0]
+#print(small_e)
+#print(l)
+
+d=modinv(small_e,l)
+
+#print(d)
+outputs["problem 3"] = d
 
 
 
