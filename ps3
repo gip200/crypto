@@ -170,7 +170,22 @@ output_string_5 = []
 
 n = p * q
 l = lcm(p - 1, q - 1)
-d = modinv(p, l)
+
+e_list = []
+e = 2
+
+while e < l:
+    if math.gcd(e, l) == 1:
+        e_list.append(e)
+        e = e + 1
+    else:
+        e = e + 1
+
+small_e = e_list[0]
+#print(small_e)
+#print(l)
+
+d=modinv(small_e,l)
 
 outputs["problem 5"] = pow(y, d) % n
 
