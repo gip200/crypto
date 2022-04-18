@@ -6,6 +6,7 @@ import binascii
 import secrets
 import hashlib
 import hmac
+import unicodedata
 from Crypto.Cipher import AES
 
 # General use XOR function given two byte strings
@@ -56,7 +57,7 @@ def aes_encr_round(data, roundkey):
     for i in range(0, len(block)):
         key=one_ctr_block(roundkey, increment(leftbytesin,i))
         rightbytesout += (xor_bytes(key, block[i]))
-
+           #xor_blk1+xor_block+...
     return (binascii.hexlify(leftbytesin+rightbytesout).decode())
 
 
@@ -142,6 +143,7 @@ nonce0 = bytes.fromhex(master_key)[16:]       # the right 16bytes-this will be t
 #print("NONCE6:", nonce6)
 #print()
 
+#kdf_key_schedule is a list of 7 keys
 kdf_key_schedule = kdf(base_key, nonce0)
 #print("KDF_Schedule: ",kdf_key_schedule)
 #print("validator", binascii.hexlify(kdf_key_schedule[0]).decode())
@@ -150,6 +152,7 @@ kdf_key_schedule = kdf(base_key, nonce0)
 #print("search_terms", binascii.hexlify(kdf_key_schedule[6]).decode())
 #print()
 
+#[rw362462,3636346,3636363,363636,363636,366363,36363634]
 
 outputs["problem 2"] = {
     "validator": binascii.hexlify(kdf_key_schedule[0]).decode(),
@@ -218,22 +221,43 @@ outputs["problem 6"] = r4
 key = (inputs["problem 7"]["key"])
 data = (inputs["problem 7"]["data"])
 
+keyhex = bytes.fromhex(key)
+datahex = bytes.fromhex(data)
+
 #def mac_hmac256_generation(message, roundkey):
 #    return bytes.fromhex(hmac.new(roundkey, message, hashlib.sha256).hexdigest().upper())
 
 output7 = (hmac.new(bytes.fromhex(key), bytes.fromhex(data), hashlib.sha256).hexdigest())
-#output7 = mac_hmac256_generation(bytes.fromhex(data),bytes.fromhex(key))
-
+#output7 = mac_hmac256_generation(datahex,keyhex)
 
 outputs["problem 7"] = output7
 
+#### "problem 8" - words sort
+# "problem 8": "-R18JqMq4G  \nk1pw\f\r\n\t!mKS6\n \f\tT\u000b Vm6CNa+\t\t\u000b>Us5S! \r++_%^|!\r \f\n|CbTWPapI=\t\n lyyS\n\u000b\u000b :cfzwLZDWsjnm`\u000b\u000b[9kuVLtW5mA\n\n\t\n,CDMYA3Th7t1q_\t\u000b ",
 
-outputs["problem 8"] = "null"
+input8 = (inputs["problem 8"])
+
+unichars = ["Ll", "Lm", "Lo", "Lt", "Lu", "Mn", "Nd", "Pc"]
+allwords = ""
+finalwordsout = []
+
+for index8 in input8:
+    # parse the entire string based on char reqs
+    if unicodedata.category(index8) in unichars:
+        allwords += index8
+    else:
+        # pull out only words 4 up to 12 chars
+        if len(allwords) > 3 and len(allwords) < 13:
+            finalwordsout.append(allwords)
+        allwords = ""
+
+    outputs["problem 8"]  = sorted(finalwordsout)
+
 outputs["problem 9"] = "null"
 outputs["problem 10"] = "null"
 outputs["problem 11"] = "null"
 
 #output
-#json.dump(outputs, sys.stdout)
+#
 print(json.dumps(outputs, indent="  "))
 print()
