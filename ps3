@@ -1,195 +1,284 @@
 #!/usr/bin/env python3
 
-#from nacl.secret import SecretBox
-#from nacl.exceptions import CryptoError
 import sys
 import json
-import math
 import binascii
 import secrets
-import random
+import hashlib
+import hmac
+import unicodedata
 from Crypto.Cipher import AES
 
-def lcm(a,b):
-	return abs(a*b) // math.gcd(a, b)
+# General use XOR function given two byte strings
+def xor_bytes(bytes1, bytes2):
+    return bytes([x ^ y for x, y in zip(bytes1, bytes2)])
 
-def modinv(e,l):
-	for x in range(1,l):
-		if (e * x) % l == 1:
-			return x
-	raise Exception("No inverse found")
 
+def increment(valuetoincrement, amount):
+    #we use this to increment the 16byt nonce values by 1, and be able to handle overflow on FFs
+    try:
+       incremented = (((int.from_bytes(valuetoincrement, 'big') + amount)  ).to_bytes(16,"big"))
+    except OverflowError:
+        # value won't fit into the payload, wrap round to 0
+        incremented = (((int.from_bytes(valuetoincrement, 'big') + amount) % 256 ).to_bytes(16,"big"))
+    return incremented
+
+
+def one_ctr_block(key, nonce_plus_ctr):
+    ctx = AES.new(key, mode=AES.MODE_ECB)
+    return ctx.encrypt(nonce_plus_ctr)
+
+
+
+def kdf(base_key, nonce):
+    # We take base key, add nothing to first, increment by 1 for each key 1-6
+    return (
+        one_ctr_block(base_key, nonce0),
+        one_ctr_block(base_key, increment(nonce0,1)),
+        one_ctr_block(base_key, increment(nonce0,2)),
+        one_ctr_block(base_key, increment(nonce0,3)),
+        one_ctr_block(base_key, increment(nonce0,4)),
+        one_ctr_block(base_key, increment(nonce0,5)),
+        one_ctr_block(base_key, increment(nonce0,6)),
+    )
+
+
+def aes_encr_round(data, roundkey):
+    # left 16 is the IV/nonce, all rest beyond byte 16 will be XORd with keystream
+    # pass iv, increment per block on iv, to one_ctr_block function per block
+    leftbytesin = data[:16]
+    rightbytesin = data[16:]
+    rightbytesout = b''
+
+    # Split datastream into blocks of 16 bytes
+    block = [rightbytesin[i:i + 16] for i in range(0, len(rightbytesin), 16)]
+
+    # Now we iterate over each 16 byte block, incrementing iv by 1 for every block
+    for i in range(0, len(block)):
+        key=one_ctr_block(roundkey, increment(leftbytesin,i))
+        rightbytesout += (xor_bytes(key, block[i]))
+           #xor_blk1+xor_block+...
+    return (binascii.hexlify(leftbytesin+rightbytesout).decode())
+
+
+
+def mac_hmac256_generation(message, roundkey):
+    return bytes.fromhex(hmac.new(roundkey, message, hashlib.sha256).hexdigest().upper())
+
+
+def hmac256_round(message, roundkey):
+    leftbytesin = message[:16]
+    rightbytesin = message[16:]
+    # left 16 is the message and will be XORd with keystream, all rest beyond byte 16 is untouched
+    leftbytesout = xor_bytes(mac_hmac256_generation(rightbytesin, roundkey), leftbytesin)
+    return binascii.hexlify(leftbytesout + rightbytesin).decode()
+
+
+def four_pass_ENCRYPT(key, plaintext, nonce):
+    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+    r1 = aes_encr_round(plaintext, k1)
+    r2 = hmac256_round(r1, k2)
+    r3 = aes_encr_round(r2, k3)
+    r4 = hmac256_round(r3, k4)
+    ciphertext = binascii.hexlify(r4).decode()
+    return ciphertext
+
+
+def four_pass_DECRYPT(key, ciphertext, nonce):
+    k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
+    r1 = hmac256_round(ciphertext,k4)
+    r2 = aes_encr_round(r1, k3)
+    r3 = hmac256_round(r2, k2)
+    r4 = aes_encr_round(r3,k1)
+    plaintext = binascii.hexlify(r4).decode()
+    return plaintext
+
+##############################################################################
 
 inputs = json.load(sys.stdin)
 outputs = {}
 
 
-## problem 1
-##
-##   "problem 1":
-##        {
-##            "nums": [3, 4, 5, 6]
-##        },
-##
-##  OUTPUT:     "problem 1" : [true, false, true, false],
+#### {"problem 1"
+#    "password": "e09f8ed71b715ec29d7c6c4db2efbf6a",
+#    "salt": "e95af5ec95b703b9fdb119a565df5012"}
+
+password = (inputs["problem 1"]["password"])
+salt = (inputs["problem 1"]["salt"])
+
+master_key_bytes = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), 250000, 32)
+master_key = binascii.hexlify(master_key_bytes).decode()
+outputs["problem 1"] = master_key
+
+#### "problem 2"
+#   masterkey: "6908d3676fbc19db7c4487f0b3c36c9efefd3168b410e98f0dca8c4cf27f9b68"
+master_key = (inputs["problem 2"])
+
+# Use 32-byte master key to generate a series of key material. Use left/first 16 bytes of output to key AES in CTR(counter) mode.
+# The right/last 16 bytes use as the initial counter block. Note that, some implementations of counter mode want only an
+# eight byte nonce, and start the second eight bytes zeroed out. You will not do this-- the initial value of the counter
+# block should be the full 16 bytes.
+
+base_key = bytes.fromhex(master_key)[:16]     # the left 16bytes-this will be used as key in AES-CTR mode
+nonce0 = bytes.fromhex(master_key)[16:]       # the right 16bytes-this will be the initial nonce/IV
+
+#test nonce to check increment and rollover from all FFFFFFFFFFFFFFFF
+#nonce0 = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+#nonce1 = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
+# Test - create all the nonce keys for kdf schedule (increment nonce + 1), 7 total keys, so 7 nonces needed
+#nonce1 = increment(nonce0,1)
+#nonce2 = increment(nonce0,2)
+#nonce3 = increment(nonce0,3)
+#nonce4 = increment(nonce0,4)
+#nonce5 = increment(nonce0,5)
+#nonce6 = increment(nonce0,6)
+
+#print("NONCE0:", nonce0)
+#print("NONCE1:", nonce1)
+#print("NONCE2:", nonce2)
+#print("NONCE3:", nonce3)
+#print("NONCE4:", nonce4)
+#print("NONCE5:", nonce5)
+#print("NONCE6:", nonce6)
+#print()
+
+#kdf_key_schedule is a list of 7 keys
+kdf_key_schedule = kdf(base_key, nonce0)
+#print("KDF_Schedule: ",kdf_key_schedule)
+#print("validator", binascii.hexlify(kdf_key_schedule[0]).decode())
+#print("feistel", binascii.hexlify(kdf_key_schedule[1]).decode(), binascii.hexlify(kdf_key_schedule[2]).decode(), binascii.hexlify(kdf_key_schedule[3]).decode(), binascii.hexlify(kdf_key_schedule[4]).decode())
+#print("mac", binascii.hexlify(kdf_key_schedule[5]).decode())
+#print("search_terms", binascii.hexlify(kdf_key_schedule[6]).decode())
+#print()
+
+#[rw362462,3636346,3636363,363636,363636,366363,36363634]
+
+outputs["problem 2"] = {
+    "validator": binascii.hexlify(kdf_key_schedule[0]).decode(),
+    "feistel":  (binascii.hexlify(kdf_key_schedule[1]).decode(),
+                binascii.hexlify(kdf_key_schedule[2]).decode(),
+                binascii.hexlify(kdf_key_schedule[3]).decode(),
+                binascii.hexlify(kdf_key_schedule[4]).decode()),
+    "mac":      binascii.hexlify(kdf_key_schedule[5]).decode(),
+    "search_terms":binascii.hexlify(kdf_key_schedule[6]).decode()
+    }
 
 
-#### code adapted from https://www.programiz.com/python-programming/examples/prime-number
-nums = (inputs["problem 1"]["nums"])
-output_string_1 = []
 
-for index1 in range(len(nums)):
-    num = nums[index1]
-    #print(num)
-    # define a flag variable
-    flag = True
+#### "problem 3"
+#  "key": "f0976dc478d49e3e501a34c1bc0470d2"
+#  "data": "96812ae4e46f6394056a343cd24eabe9da96f03cf6f5ea697b7ca81db801605d306cebf586b15a2738dc45f0cae54f48c2de358a4afcfb190c8742d02142a69b"
 
-    # prime numbers are greater than 1
-    if num > 1:
-        # check for factors
-        for i in range(2, num):
-            if (num % i) == 0:
-                # if factor is found, set flag to false, its not prime
-                flag = False
-                # break out of loop
-                break
+key = (inputs["problem 3"]["key"])
+data = (inputs["problem 3"]["data"])
 
-    output_string_1.append(flag)
+one = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
 
-#print(output_string_1)
-outputs["problem 1"] = output_string_1
+outputs["problem 3"] = aes_encr_round(bytes.fromhex(data),bytes.fromhex(key))
 
+#### "problem 4"
+#    "key": "367fa89eb52235e852133bf4ad7464d6"
+#    "data": "b892dc4550bf6f12cb972915b74c0c77a4de3c88cd77494cf1dd399fd00ec698e06f6632a1e51e3f735f02ea070c10540b8ded940e66f27e5195bb2867e5508c"
 
-## problem 2
-##
-##   "problem 2":
-##      {
-##        "p": 7,
-##        "q": 11
-##       },
-##
-##  OUTPUT:     "problem 2" : 7,
+key = (inputs["problem 4"]["key"])
+data = (inputs["problem 4"]["data"])
 
-p = (inputs["problem 2"]["p"])
-q = (inputs["problem 2"]["q"])
-output2=''
+outputs["problem 4"] = hmac256_round(bytes.fromhex(data),bytes.fromhex(key))
 
-# inspiration from https://crypto.stackexchange.com/questions/13166/method-to-calculating-e-in-rsa
-n = p * q
-l = lcm(p - 1, q - 1)
+#### "problem 5"
+#    "keys": ["bded14df20bcbff95ad53d36f1076bb4","e10c7fe143ecdc73589ec187dc43fc9d","fb6f0f9487466c806f9e85b2eb7f1b8d","e082d2d95823992874ba60b259c678f8"
+#     "plaintext": "11de356b0e1867ae1bed2ec0afd569ea830a716ff64548124f466ff9c72e6b8783e46f1217fbe0e057bedaf4fbf9ce7824e650711384198d7af6493acd8c759d"
+keys = (inputs["problem 5"]["keys"])
+plaintext = (inputs["problem 5"]["plaintext"])
 
-e_list = []
-e = 2
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
 
-while e < l:
-    if math.gcd(e, l) == 1:
-        e_list.append(e)
-        e = e + 1
+r1 = aes_encr_round(bytes.fromhex(plaintext), bytes.fromhex(k1))
+r2 = hmac256_round(bytes.fromhex(r1), bytes.fromhex(k2))
+r3 = aes_encr_round(bytes.fromhex(r2), bytes.fromhex(k3))
+r4 = hmac256_round(bytes.fromhex(r3), bytes.fromhex(k4))
+
+outputs["problem 5"] = r4
+
+#### "problem 6" - decrypt
+#"keys": "9136c13f5ba72c34b2fc5986fcb5e015", "bca81342ecca0b400fcf24b7e5144fa7", "8ef064dc978a1d440bc5bd85e12ae3f7", "0de83c15ff013afe3e761a9849e1722d"
+#ciphertext": "cc31e9422c9cd4cdab8ff29e2c8db4ec457afa5142ee78702c4c898ed10c616be9053ed5213445d155a816937fbffa2f59027a2ef6fd6edc76fc008a2fb63fe1"
+keys = (inputs["problem 6"]["keys"])
+ciphertext = (inputs["problem 6"]["ciphertext"])
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+
+r1 = hmac256_round(bytes.fromhex(ciphertext), bytes.fromhex(k4))
+r2 = aes_encr_round(bytes.fromhex(r1), bytes.fromhex(k3))
+r3 = hmac256_round(bytes.fromhex(r2), bytes.fromhex(k2))
+r4 = aes_encr_round(bytes.fromhex(r3), bytes.fromhex(k1))
+
+outputs["problem 6"] = r4
+
+#### "problem 7" - decrypt
+# "key": "bfff3ed5101115977e79be0d4a8d0f3b",
+# "data": "3e669d9db69fa81a464d9ffec1ac9c3cf5aeea47e4b92bcddf137e767f45ded0e6c8c66ab4eff14a0952dfa33160e09c4e289f04decdf0f8321b8931c47c84d4"
+key = (inputs["problem 7"]["key"])
+data = (inputs["problem 7"]["data"])
+
+keyhex = bytes.fromhex(key)
+datahex = bytes.fromhex(data)
+
+#def mac_hmac256_generation(message, roundkey):
+#    return bytes.fromhex(hmac.new(roundkey, message, hashlib.sha256).hexdigest().upper())
+
+output7 = (hmac.new(bytes.fromhex(key), bytes.fromhex(data), hashlib.sha256).hexdigest())
+#output7 = mac_hmac256_generation(datahex,keyhex)
+
+outputs["problem 7"] = output7
+
+#### "problem 8" - words sort
+# "problem 8": "-R18JqMq4G  \nk1pw\f\r\n\t!mKS6\n \f\tT\u000b Vm6CNa+\t\t\u000b>Us5S! \r++_%^|!\r \f\n|CbTWPapI=\t\n lyyS\n\u000b\u000b :cfzwLZDWsjnm`\u000b\u000b[9kuVLtW5mA\n\n\t\n,CDMYA3Th7t1q_\t\u000b ",
+
+input8 = (inputs["problem 8"])
+
+unichars = ["Ll", "Lm", "Lo", "Lt", "Lu", "Mn", "Nd", "Pc"]
+allwords = ""
+finalwordsout = []
+
+for index8 in input8:
+    # parse the entire string based on char reqs
+    if unicodedata.category(index8) in unichars:
+        allwords += index8
     else:
-        e = e + 1
+        # pull out only words 4 up to 12 chars
+        if len(allwords) > 3 and len(allwords) < 13:
+            finalwordsout.append(allwords)
+        allwords = ""
 
-#take smallest prime of e_list
-small_e = e_list[0]
-
-#print(output2)
-outputs["problem 2"] = small_e
+    outputs["problem 8"]  = sorted(finalwordsout)
 
 
-## problem 3
-##
-## "problem 3":
-##    {
-##      "p": 7,
-##      "q": 11
-##    },
-##  OUTPUT:     "problem 3" : 13,
+#### "problem 9" - words sort
+# "problem 8": "xl8u5iadsfG\f\r\u000b\n=8OYHayywdu\r\t<y\t\n9Wq71IzvaDd\nᝄw\t_AiudH\rXwb2R\r[TlK8M& \t\nyS4s=\t\f~yM󠄖\nTQc0ѸIѶd‿ⳇlS8\r \u000b|vLqxrNy+\r\t\r\tⳇW`\u000b\t \f-hCuJd7pwfpv* \t\f\f*B\\\u000b\n)NⰊAyiB𝪝ᾛkhtzmd_ $L5OdRgH2Eyyx\u000b\ff\u000b|FừZh꧴ \u000b\tWQV\ffuUETlO9DS\n\f *󠄾\r_Vg3MQ85YEds𝔈Kᾨ+\rmqԷoi\r\u000b\r*Vg\r\nRᾈ45zB\t\n\nWwxbgFjpRALbuGnBwvR\f\u000b\n2F᱁iA\u000b\fdb5+\r\u000b \u000bBUVDꙄ^\n\n\t\n!5𑄻\"\n\f\t\r=𑛁OXx𓇠v\u000bÐѸb[\n\fRn2sXH1XJkfe| \txGj2pw!\t\rῢC_\n \r3dOᾩEᐽD\u000b"
 
-p = (inputs["problem 3"]["p"])
-q = (inputs["problem 3"]["q"])
+input9 = (inputs["problem 9"])
 
-# inspiration from https://crypto.stackexchange.com/questions/13166/method-to-calculating-e-in-rsa
-n = p * q
-l = lcm(p - 1, q - 1)
+unichars = ["Ll", "Lm", "Lo", "Lt", "Lu", "Mn", "Nd", "Pc"]
+allwords = ""
+finalwordsout = []
 
-e_list = []
-e = 2
-
-while e < l:
-    if math.gcd(e, l) == 1:
-        e_list.append(e)
-        e = e + 1
+for index9 in input9:
+    # parse the entire string based on char reqs
+    if unicodedata.category(index9) in unichars:
+        allwords += index9
     else:
-        e = e + 1
+        # pull out only words 4 up to 12 chars
+        if len(allwords) > 3 and len(allwords) < 13:
+            finalwordsout.append(allwords)
+        allwords = ""
 
-small_e = e_list[0]
-#print(small_e)
-#print(l)
+    outputs["problem 9"]  = sorted(finalwordsout)
 
-d=modinv(small_e,l)
-
-#print(d)
-outputs["problem 3"] = d
-
-
-
-## problem 4
-##
-##    "problem 4" :
-##    {
-##	"e" : 7,
-##	"n" : 77,
-##	"x" : 20
-##    },
-##  OUTPUT:     "problem 4" : 48,
-
-input4 = (inputs["problem 4"])
-
-e = (inputs["problem 4"]["e"])
-n = (inputs["problem 4"]["n"])
-x = (inputs["problem 4"]["x"])
-
-outputs["problem 4"] = pow(x, e) % n
-
-## problem 5
-##
-##    "problem 5" :
-##    {
-##	   "p" : 7,
-##	  "q" : 11,
-##	   "y" : 48
-##    }
-##  OUTPUT:     "problem 5" : 20
-
-input5 = (inputs["problem 5"])
-
-
-p = (inputs["problem 5"]["p"])
-q = (inputs["problem 5"]["q"])
-y = (inputs["problem 5"]["y"])
-output_string_5 = []
-
-n = p * q
-l = lcm(p - 1, q - 1)
-
-e_list = []
-e = 2
-
-while e < l:
-    if math.gcd(e, l) == 1:
-        e_list.append(e)
-        e = e + 1
-    else:
-        e = e + 1
-
-small_e = e_list[0]
-#print(small_e)
-#print(l)
-
-d=modinv(small_e,l)
-
-outputs["problem 5"] = pow(y, d) % n
+outputs["problem 10"] = "null"
+outputs["problem 11"] = "null"
 
 #output
-#json.dump(outputs, sys.stdout)
+#
 print(json.dumps(outputs, indent="  "))
 print()
