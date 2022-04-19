@@ -15,9 +15,9 @@ def xor_bytes(bytes1, bytes2):
 
 
 def increment(valuetoincrement, amount):
-    #we use this to increment the 16byt nonce values by 1, and be able to handle overflow on FFs
+    # we use this to increment the 16byt nonce values by 1, and be able to handle overflow on FFs
     try:
-       incremented = (((int.from_bytes(valuetoincrement, 'big') + amount)  ).to_bytes(16,"big"))
+       incremented = ((int.from_bytes(valuetoincrement, 'big') + amount).to_bytes(16,"big"))
     except OverflowError:
         # value won't fit into the payload, wrap round to 0
         incremented = (((int.from_bytes(valuetoincrement, 'big') + amount) % 256 ).to_bytes(16,"big"))
@@ -27,7 +27,6 @@ def increment(valuetoincrement, amount):
 def one_ctr_block(key, nonce_plus_ctr):
     ctx = AES.new(key, mode=AES.MODE_ECB)
     return ctx.encrypt(nonce_plus_ctr)
-
 
 
 def kdf(base_key, nonce):
@@ -55,9 +54,9 @@ def aes_encr_round(data, roundkey):
 
     # Now we iterate over each 16 byte block, incrementing iv by 1 for every block
     for i in range(0, len(block)):
-        key=one_ctr_block(roundkey, increment(leftbytesin,i))
+        key = one_ctr_block(roundkey, increment(leftbytesin,i))
         rightbytesout += (xor_bytes(key, block[i]))
-           #xor_blk1+xor_block+...
+           # xor_blk1+xor_block+...
     return (binascii.hexlify(leftbytesin+rightbytesout).decode())
 
 
@@ -93,13 +92,14 @@ def four_pass_DECRYPT(key, ciphertext, nonce):
     plaintext = binascii.hexlify(r4).decode()
     return plaintext
 
+
 ##############################################################################
 
 inputs = json.load(sys.stdin)
 outputs = {}
 
 
-#### {"problem 1"
+# ### {"problem 1"
 #    "password": "e09f8ed71b715ec29d7c6c4db2efbf6a",
 #    "salt": "e95af5ec95b703b9fdb119a565df5012"}
 
@@ -110,49 +110,17 @@ master_key_bytes = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhe
 master_key = binascii.hexlify(master_key_bytes).decode()
 outputs["problem 1"] = master_key
 
-#### "problem 2"
+# ### "problem 2"
 #   masterkey: "6908d3676fbc19db7c4487f0b3c36c9efefd3168b410e98f0dca8c4cf27f9b68"
 master_key = (inputs["problem 2"])
 
-# Use 32-byte master key to generate a series of key material. Use left/first 16 bytes of output to key AES in CTR(counter) mode.
-# The right/last 16 bytes use as the initial counter block. Note that, some implementations of counter mode want only an
-# eight byte nonce, and start the second eight bytes zeroed out. You will not do this-- the initial value of the counter
-# block should be the full 16 bytes.
 
 base_key = bytes.fromhex(master_key)[:16]     # the left 16bytes-this will be used as key in AES-CTR mode
 nonce0 = bytes.fromhex(master_key)[16:]       # the right 16bytes-this will be the initial nonce/IV
 
-#test nonce to check increment and rollover from all FFFFFFFFFFFFFFFF
-#nonce0 = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
-#nonce1 = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-
-# Test - create all the nonce keys for kdf schedule (increment nonce + 1), 7 total keys, so 7 nonces needed
-#nonce1 = increment(nonce0,1)
-#nonce2 = increment(nonce0,2)
-#nonce3 = increment(nonce0,3)
-#nonce4 = increment(nonce0,4)
-#nonce5 = increment(nonce0,5)
-#nonce6 = increment(nonce0,6)
-
-#print("NONCE0:", nonce0)
-#print("NONCE1:", nonce1)
-#print("NONCE2:", nonce2)
-#print("NONCE3:", nonce3)
-#print("NONCE4:", nonce4)
-#print("NONCE5:", nonce5)
-#print("NONCE6:", nonce6)
-#print()
 
 #kdf_key_schedule is a list of 7 keys
 kdf_key_schedule = kdf(base_key, nonce0)
-#print("KDF_Schedule: ",kdf_key_schedule)
-#print("validator", binascii.hexlify(kdf_key_schedule[0]).decode())
-#print("feistel", binascii.hexlify(kdf_key_schedule[1]).decode(), binascii.hexlify(kdf_key_schedule[2]).decode(), binascii.hexlify(kdf_key_schedule[3]).decode(), binascii.hexlify(kdf_key_schedule[4]).decode())
-#print("mac", binascii.hexlify(kdf_key_schedule[5]).decode())
-#print("search_terms", binascii.hexlify(kdf_key_schedule[6]).decode())
-#print()
-
-#[rw362462,3636346,3636363,363636,363636,366363,36363634]
 
 outputs["problem 2"] = {
     "validator": binascii.hexlify(kdf_key_schedule[0]).decode(),
@@ -192,7 +160,7 @@ outputs["problem 4"] = hmac256_round(bytes.fromhex(data),bytes.fromhex(key))
 keys = (inputs["problem 5"]["keys"])
 plaintext = (inputs["problem 5"]["plaintext"])
 
-k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3]
 
 r1 = aes_encr_round(bytes.fromhex(plaintext), bytes.fromhex(k1))
 r2 = hmac256_round(bytes.fromhex(r1), bytes.fromhex(k2))
@@ -206,7 +174,7 @@ outputs["problem 5"] = r4
 #ciphertext": "cc31e9422c9cd4cdab8ff29e2c8db4ec457afa5142ee78702c4c898ed10c616be9053ed5213445d155a816937fbffa2f59027a2ef6fd6edc76fc008a2fb63fe1"
 keys = (inputs["problem 6"]["keys"])
 ciphertext = (inputs["problem 6"]["ciphertext"])
-k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3];
+k1=keys[0]; k2=keys[1];k3=keys[2];k4=keys[3]
 
 r1 = hmac256_round(bytes.fromhex(ciphertext), bytes.fromhex(k4))
 r2 = aes_encr_round(bytes.fromhex(r1), bytes.fromhex(k3))
@@ -275,10 +243,49 @@ for index9 in input9:
 
     outputs["problem 9"]  = sorted(finalwordsout)
 
-outputs["problem 10"] = "null"
-outputs["problem 11"] = "null"
 
-#output
+
+#### "problem 10" - words sort
+# "problem 10": "xl8u5iadsfG\f\r\u000b\n=8OYHayywdu\r\t<y\t\n9Wq71IzvaDd\nᝄw\t_AiudH\rXwb2R\r[TlK8M& \t\nyS4s=\t\f~yM󠄖\nTQc0ѸIѶd‿ⳇlS8\r \u000b|vLqxrNy+\r\t\r\tⳇW`\u000b\t \f-hCuJd7pwfpv* \t\f\f*B\\\u000b\n)NⰊAyiB𝪝ᾛkhtzmd_ $L5OdRgH2Eyyx\u000b\ff\u000b|FừZh꧴ \u000b\tWQV\ffuUETlO9DS\n\f *󠄾\r_Vg3MQ85YEds𝔈Kᾨ+\rmqԷoi\r\u000b\r*Vg\r\nRᾈ45zB\t\n\nWwxbgFjpRALbuGnBwvR\f\u000b\n2F᱁iA\u000b\fdb5+\r\u000b \u000bBUVDꙄ^\n\n\t\n!5𑄻\"\n\f\t\r=𑛁OXx𓇠v\u000bÐѸb[\n\fRn2sXH1XJkfe| \txGj2pw!\t\rῢC_\n \r3dOᾩEᐽD\u000b""&uCZGBPutUem\fsUB0bQioTLfJIPX/\f\f /NaRq5bWk&\u000b\n\nn,\t\n\t\tdnY01z4yvPuX8AWnPZka\r ?Wm0eIcQSVyv\r\u000b,BMPJa5'\r\n\n\rTknbf1KVCzKE`\f\r=a\nK0xcgF\n\n\r=9kxNYik}\u000b6ypx6il0Y.\t\u000b\u000b:m3{\r\u000b `BsG0TSfR*\n>ueeUN6iS\n"
+input10 = (inputs["problem 10"])
+
+allwords = ""
+finalwordsout = []
+
+for index10 in input10:
+    # parse the entire string based on char reqs
+    if unicodedata.category(index10) in unichars:
+        allwords += index10
+    else:
+        # pull out only words 4 up to 12 chars
+        if len(allwords) > 3 and len(allwords) < 13:
+            temp2 = unicodedata.normalize('NFC', allwords).casefold()
+            finalwordsout.append(allwords)
+        allwords = ""
+
+        outputs["problem 10"] = sorted(finalwordsout)
+
+#### "problem 11" - words sort
+# "problem 11": "xl8u5iadsfG\f\r\u000b\n=8OYHayywdu\r\t<y\t\n9Wq71IzvaDd\nᝄw\t_AiudH\rXwb2R\r[TlK8M& \t\nyS4s=\t\f~yM󠄖\nTQc0ѸIѶd‿ⳇlS8\r \u000b|vLqxrNy+\r\t\r\tⳇW`\u000b\t \f-hCuJd7pwfpv* \t\f\f*B\\\u000b\n)NⰊAyiB𝪝ᾛkhtzmd_ $L5OdRgH2Eyyx\u000b\ff\u000b|FừZh꧴ \u000b\tWQV\ffuUETlO9DS\n\f *󠄾\r_Vg3MQ85YEds𝔈Kᾨ+\rmqԷoi\r\u000b\r*Vg\r\nRᾈ45zB\t\n\nWwxbgFjpRALbuGnBwvR\f\u000b\n2F᱁iA\u000b\fdb5+\r\u000b \u000bBUVDꙄ^\n\n\t\n!5𑄻\"\n\f\t\r=𑛁OXx𓇠v\u000bÐѸb[\n\fRn2sXH1XJkfe| \txGj2pw!\t\rῢC_\n \r3dOᾩEᐽD\u000b""&uCZGBPutUem\fsUB0bQioTLfJIPX/\f\f /NaRq5bWk&\u000b\n\nn,\t\n\t\tdnY01z4yvPuX8AWnPZka\r ?Wm0eIcQSVyv\r\u000b,BMPJa5'\r\n\n\rTknbf1KVCzKE`\f\r=a\nK0xcgF\n\n\r=9kxNYik}\u000b6ypx6il0Y.\t\u000b\u000b:m3{\r\u000b `BsG0TSfR*\n>ueeUN6iS\n"
+input11 = (inputs["problem 11"])
+
+allwords = ""
+finalwordsout = []
+
+for index11 in input11:
+    # parse the entire string based on char reqs
+    if unicodedata.category(index11) in unichars:
+        allwords += index11
+    else:
+        # pull out only words 4 up to 12 chars
+        if len(allwords) > 3 and len(allwords) < 13:
+            temp2 = unicodedata.normalize('NFC', allwords).casefold()
+            finalwordsout.append(allwords)
+        allwords = ""
+
+        outputs["problem 11"] = sorted(finalwordsout)
+
+# output
 #
 print(json.dumps(outputs, indent="  "))
 print()
