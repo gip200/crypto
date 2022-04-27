@@ -17,7 +17,7 @@ from argparse import ArgumentParser, Namespace
 
 
 ##############################################################################################################################
-#  These are our crypto and related functions - adapted from classroom content 
+#  These are our crypto and related functions - adapted from classroom content
 ##############################################################################################################################
 
 def mac_term(word: str, key: bytes):
@@ -256,7 +256,12 @@ def get_all_words(data: str, min_=1, max_=100, lower=True, normalize=True):
 
 
 def _input_a_password():
-    password = getpass.getpass('Enter a password: ')
+    # Warning: This method won't work on the IDE/IDLE running window, it needs terminal to work
+    MSG = 'Password: '
+    if sys.stdin.isatty():
+        password = getpass.getpass(MSG)
+    else:
+        password = input(MSG)
     return password
 
 
@@ -329,7 +334,7 @@ def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
     def encrypt_file(_filename: str):
         # Try to do what we need to here to encrypt the file, and generate metadata
         def create_FENC_META():
-            # Lets start to populate the .fenc-meta file of the current file 
+            # Lets start to populate the .fenc-meta file of the current file
             nonlocal FENC_META, _filename  # just declaring that these vars are not on this scope
             buf = json.dumps(FENC_META, indent=4)  # convert dict into string with some formatting
             open(FENC_META_STARTS + _filename, 'w').write(buf)  # write it on a new file (can overwrite olds)
@@ -425,7 +430,7 @@ def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
         # Lets decrypt, check validation first and MACs, handle removal of metadata
 
         def delete_FENC_META():
-            #deletes the .fenc-meta file of the current file 
+            #deletes the .fenc-meta file of the current file
             nonlocal _filename  # just declaring that these vars are not on this scope
             os.remove(FENC_META_STARTS + _filename)
 
