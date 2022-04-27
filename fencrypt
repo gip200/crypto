@@ -15,27 +15,26 @@ from typing import Sequence
 from Crypto.Cipher import AES
 from argparse import ArgumentParser, Namespace
 
-
 ##############################################################################################################################
 #  These are our crypto and related functions - adapted from classroom content
 ##############################################################################################################################
 
+# This method should MAC the given word/terms
 def mac_term(word: str, key: bytes):
-    # This method should MAC the given word/terms
-    return hmac.new(key, word.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(key, word.lower().encode(), hashlib.sha256).hexdigest()
 
+# All steps to encrypt, and mac, given we do KDF key schedule
 def encrypt_file_data(data: bytes, base_key: bytes, nonce: bytes):
-    # All steps to encrypt, and mac, given we do KDF key schedule
-    _k0, _k1, _k2, _k3, _k4, k5, _k6 = kdf(base_key, nonce)  # we'll need keys 1-4 here for feistel and 5, the mac
+    _k0, _k1, _k2, _k3, _k4, k5, _k6 = kdf(base_key, nonce)  # the only key we need to use is _k6, which is the mac
     ciphertext = four_pass_ENCRYPT(base_key, data, nonce)
     # Make use of HMAC-SHA2-256 and the MAC key to MAC the ciphertext. This will allow determination of tampering
     # without having to do decrypt operation.
-    macd = hmac.new(k5, ciphertext, hashlib.sha256).digest()
-    return macd, ciphertext
+    maced = hmac.new(k5, ciphertext, hashlib.sha256).digest()
+    return maced, ciphertext
 
 
+# All steps to decrypt, given we do have KDF key schedule
 def decrypt_file_data(data: bytes, base_key: bytes, nonce: bytes):
-    # All steps to deccrypt, given we do have KDF key schedule
     return four_pass_DECRYPT(base_key, data, nonce)
 
 
@@ -57,7 +56,6 @@ def _increment(valuetoincrement: Union[bytes, str], amount: int):
 
 
 # Block encryption handling for 16 byte blocks. Not used independently.
-#
 def _one_ctr_block(key: bytes, nonce_plus_ctr: bytes):
     ctx = AES.new(key, mode=AES.MODE_ECB)
     return ctx.encrypt(nonce_plus_ctr)
@@ -66,9 +64,8 @@ def _one_ctr_block(key: bytes, nonce_plus_ctr: bytes):
 # Key Schedule Generation. Takes base key, which is the left 16 bytes of the master key and the nonce,
 # which is the right 16 bytes of master key. It increments and creates 7 keys, stored in list. Key
 # schedule will be used in encryption and decryption.
-#
+#    # We take base key, add nothing to first, increment by 1 for each key 1-6
 def kdf(base_key: bytes, nonce_: bytes):
-    # We take base key, add nothing to first, increment by 1 for each key 1-6
     result = (
         _one_ctr_block(base_key, nonce_),
         _one_ctr_block(base_key, _increment(nonce_, 1)),
@@ -76,13 +73,12 @@ def kdf(base_key: bytes, nonce_: bytes):
         _one_ctr_block(base_key, _increment(nonce_, 3)),
         _one_ctr_block(base_key, _increment(nonce_, 4)),
         _one_ctr_block(base_key, _increment(nonce_, 5)),
-        _one_ctr_block(base_key, _increment(nonce_, 6)),
+        _one_ctr_block(base_key, _increment(nonce_, 6))
     )
     return result
 
 
 # AES Single Encryption Round - A single round of stream encryption. Not used independently.
-#
 def _aes_encr_round(data: bytes, roundkey: bytes):
     # left 16 is the IV/nonce, all rest beyond byte 16 will be XORd with keystream
     # pass iv, increment per block on iv, to one_ctr_block function per block
@@ -103,7 +99,6 @@ def _aes_encr_round(data: bytes, roundkey: bytes):
 
 
 # HMAC Generation - Needed for HMAC, takes MAC and Message or content, also used below for HMAC round
-#
 def _mac_hmac256_generation(message: Union[str, bytes], roundkey: bytes):
     message = message.encode() if isinstance(message, str) else message  # force convert into bytes
     result = hmac.new(roundkey, message, hashlib.sha256).digest()
@@ -111,7 +106,6 @@ def _mac_hmac256_generation(message: Union[str, bytes], roundkey: bytes):
 
 
 # HMAC Round - Part of 4 pass encryption/decryption
-#
 def _hmac256_round(message: Union[str, bytes], roundkey: bytes):
     message = message.encode() if isinstance(message, str) else message  # force convert into bytes
     leftbytesin = message[:16]
@@ -122,7 +116,6 @@ def _hmac256_round(message: Union[str, bytes], roundkey: bytes):
 
 
 # Main encryption - 4 passes, 1/3 are aes_encr_round, 2/4 are hmac256_round
-#
 def four_pass_ENCRYPT(key: bytes, plaintext: Union[str, bytes], nonce: bytes):
     k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
     plaintext = plaintext.encode() if isinstance(plaintext, str) else plaintext  # force convert into bytes
@@ -134,7 +127,6 @@ def four_pass_ENCRYPT(key: bytes, plaintext: Union[str, bytes], nonce: bytes):
 
 
 # Main decryption - 4 passes in reverse, 4/2 are hmac256_round, 3/1 are aes_encr_round,
-#
 def four_pass_DECRYPT(key: bytes, ciphertext: bytes, nonce: bytes):
     k0, k1, k2, k3, k4, k5, k6 = kdf(key, nonce)
     r1 = _hmac256_round(ciphertext, k4)
@@ -150,113 +142,60 @@ def four_pass_DECRYPT(key: bytes, ciphertext: bytes, nonce: bytes):
 
 
 parser = ArgumentParser(prog='fencrypt.py', description='simple command-line based program to handle some file operations')
-FENC_META_STARTS = '.fenc-meta.'
+fenc_meta_STARTS = '.fenc-meta.'
+SEARCH_TERMS_MIN_MAX = 4, 14
+TERM_MIN, TERM_MAX = SEARCH_TERMS_MIN_MAX
 
-# > OPERATION FLAGS
+# OPERATION FLAGS
 parser.add_argument('-e', action='store_true', help='encrypt files using protected password.')
 parser.add_argument('-d', action='store_true', help='decrypt files using protected password.')
 # < -d flag will be set to True later, if no flag was declared
 parser.add_argument('-s', action='store_true', help='search decrypted files.')
 
-# > CONTROL FLAGS
+# CONTROL FLAGS
 parser.add_argument('-j', action='store_true', help='print out key info about files as JSON.')
 parser.add_argument('-o', action='store_true', help='print out debugging process.')
 
-# > INPUT FLAG
+# INPUT FLAG
 parser.add_argument('P', nargs='*', help='target files to process, or search terms.')
 
 
-# ############### encoding and normalizing methods
+
+##############################################################################################################################
+#  Encoding type (binary or utf), some search, normalization and casefolding, and password collection ##############################################################################################################################
 
 
-def encoding_please(file_path: str = None, data: bytes = None):
-    # Lets determine if a file is binary or text, it will matter for searching (empty MAC field)
-
-    # first, check that we have inputs
-    if file_path is None and data is None:
-        raise ValueError('Can not execute with no argument')
-    # DECLARING VARIABLES
-    BUFFER_SIZE = 1000  # this is the length of bytes to read from the file at once, just to avoid overload the RAM if the file is large
-    BOM = b'\xEF\xBB\xBF'
-    ANSI, ASCII, UTF8, UTF8_BOM = 'ansi', 'ascii', 'utf-8', 'utf-8-bom'  # constants that one will appear in the result
-    result = ASCII  # default result if the file is empty or just english letters
-    reminder = 0  # important to use to detect utf-8
-    #
-    #  RUN THE CHECKING
-    file = open(file_path, 'rb') if file_path else None  # open the file if specified
-    try:  # to catch any error if happen and close the file
-        first_while = True
-        while True:  # will keep reading data from the file till no longer data are provided
-            if file:  # if there is a file opened
-                buffer = file.read(BUFFER_SIZE)  # read as buffer size
-                if first_while and buffer.startswith(BOM):
-                    result = UTF8_BOM
-                    buffer = buffer[3:]
-                if len(buffer) == 0:  # this to catch when we have done with the file
-                    if data:  # move to process data continuously after file finished
-                        buffer = data
-                        data = None  # mark as done
-                    else:  # break if no data are there or if marked as done
-                        break
-            elif data:  # if this is a data-mode only, and there are data
-                buffer = data  # set data to buffer
-                data = None  # mark as done
-            else:  # this will be reached only on data-mode and just when data already marked as done (see previous line)
-                break
-            #
-            # LOOP CURRENT BUFFER AND PROCESS IT
-            for byte in buffer:
-                if byte == 0:  # when there is a null byte
-                    return ANSI
-                if reminder:  # when we are inside utf-8 bytes discovering
-                    if (not byte & 0b10000000) or (byte & 0b01000000):
-                        return ANSI  # if this is not a valid utf-8 byte
-                    else:  # when this is valid utf-8 byte
-                        reminder -= 1  # mark as calculated and continue
-                elif byte & 0b11000000 == 0b11000000:  # if this byte has utf-8 starting pattern
-                    # detect which utf-8 length it specifies, with make sure it is valid utf-8 starter byte
-                    bytes_count = 2 if not byte & 0b00100000 else \
-                        3 if byte & (x___ := 0b11100000) == x___ and not byte & 0b00010000 else \
-                        4 if byte & (x___ := 0b11110000) == x___ and not byte & 0b00001000 else \
-                        5 if byte & (x___ := 0b11111000) == x___ and not byte & 0b00000100 else \
-                        6 if byte & (x___ := 0b11111100) == x___ and not byte & 0b00000010 else 0
-                    if bytes_count == 0:  # when it is not a valid utf-8 starter
-                        return ANSI  # means file can't be utf-8 in any way, and also ASCII because it has the eighth byte, So it is ANSI
-                    # when everything went well with this utf-8 starter byte
-                    result = UTF8  # make the encoding to be utf-8 for now, and continue checking
-                    reminder = bytes_count - 1  # remember how many bytes need to be discovered
-                elif byte & 0b10000000:  # when current byte has NOTHING to do with utf-8
-                    # test to see if it is ANSI by checking eighth byte
-                    return ANSI
-                else:  # ASCII is the last to check of, so this must be ASCII 100%
-                    pass  # don'T do result = ASCII
-            first_while = False
-    finally:
-        if file and not file.closed:  # close the file if open
-            file.close()
-    if reminder:  # when the data are completed but still there some missing bytes, return ANSI
-        return ANSI
-    return result
+def is_utf(data: bytes):
+    try:
+        _ = data.decode('utf-8')
+        return True
+    except UnicodeDecodeError:
+        return False
 
 
 def get_all_words(data: str, min_=1, max_=100, lower=True, normalize=True):
-    # this method does: casefolding and normalization on the run
-    pat = re.compile(r'\w{%s,%s}' % (min_, max_))
-    result = set()
-    for w in pat.findall(data):
-        w = w.lower() if lower else w
-        w = unicodedata.normalize('NFC', w) if normalize else w
-        result.add(w)
+    # this method does: scaffolding and normalization on the run
+    # search for any combination of word letters with length between min_ and max_, and not chained to another word directly
+    pat = re.compile(r'([a-zA-Z]\w{%s,%s})[^\w]' % (min_ - 1, max_ - 1))
+    result = set()  # use set to make results unique
+    for w in pat.finditer(data):  # loop them all
+        try:
+            if w.span()[0] > 0:
+                if re.match(r'^\w$', data[w.span()[0] - 1]):  # fix possible error with words length
+                    continue
+            w = w.group(1)  # get the word as string
+            w = w.lower() if lower else w  # lowercase
+            w = unicodedata.normalize('NFC', w) if normalize else w  # normalize
+            result.add(w)  # save
+        except Exception as e:
+            print()
+            print()
+            print('............................')
+            print(e)
     return result
 
 
-##############################################################################################################
-#  Some functions for the purpose of file handling, password collection, etc
-##############################################################################################################
-
-
 def _input_a_password():
-    # Warning: This method won't work on the IDE/IDLE running window, it needs terminal to work
     MSG = 'Password: '
     if sys.stdin.isatty():
         password = getpass.getpass(MSG)
@@ -265,8 +204,14 @@ def _input_a_password():
     return password
 
 
+##############################################################################################################################
+#  File handling
+##############################################################################################################################
+
+
+
 def __is_file_encrypted(filename: str):
-    return os.path.isfile(FENC_META_STARTS + filename)
+    return os.path.isfile(fenc_meta_STARTS + filename)
 
 
 def __add_filename_to(_filename: str, to: list, min_size: int = None):
@@ -280,23 +225,24 @@ def __add_filename_to(_filename: str, to: list, min_size: int = None):
     to.append(_filename)  # add current file to list
 
 
-def _get_files(normal_files=False, FENC_META_files=False, all_files=False, min_size: int = None):
-    # > when no file type was specified, Error and cancel
-    if not (normal_files or FENC_META_files or all_files):
+def _get_files(normal_files=False, fenc_meta_files=False, all_files=False, min_size: int = None):
+    # when no file type was specified, Error and cancel
+    if not (normal_files or fenc_meta_files or all_files):
         raise SyntaxError('Error: no file type was declared!')
     # get everything in current directory
     all_filenames = os.listdir()
-    #  start processing
+    # start processing
     result = []
     for single in all_filenames:  # loop all file and dir names in this directory
         if os.path.isfile(single):  # continue only if this is a file
             if all_files:  # when all files are in demand
                 __add_filename_to(single, result, min_size)
-            elif FENC_META_files:  # when only meta files in demand
-                if single.startswith(FENC_META_STARTS):  # it must be starting with the $FENC_META_STARTS
-                    __add_filename_to(single, result, min_size)
+            elif fenc_meta_files:  # when only meta files in demand
+                if single.startswith(fenc_meta_STARTS):  # it must be starting with the $fenc_meta_STARTS
+                    if os.path.isfile(single.replace(fenc_meta_STARTS, '', 1)):
+                        __add_filename_to(single, result, min_size)
             else:  # when only normal files in demand, Not meta files
-                if not single.startswith(FENC_META_STARTS):
+                if not single.startswith(fenc_meta_STARTS):
                     __add_filename_to(single, result, min_size)
     return result
 
@@ -329,39 +275,43 @@ def _process_filenames_for_decryption(filenames: Sequence[str]):
     return result
 
 
+##############################################################################################################################
+#  Doing the dirty work...
+##############################################################################################################################
+
+
 def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
 
     def encrypt_file(_filename: str):
         # Try to do what we need to here to encrypt the file, and generate metadata
-        def create_FENC_META():
+        def create_fenc_meta():
             # Lets start to populate the .fenc-meta file of the current file
-            nonlocal FENC_META, _filename  # just declaring that these vars are not on this scope
-            buf = json.dumps(FENC_META, indent=4)  # convert dict into string with some formatting
-            open(FENC_META_STARTS + _filename, 'w').write(buf)  # write it on a new file (can overwrite olds)
+            nonlocal fenc_meta, _filename  # just declaring that these vars are not on this scope
+            buf = json.dumps(fenc_meta, indent=4)  # convert dict into string with some formatting
+            open(fenc_meta_STARTS + _filename, 'w').write(buf)  # write it on a new file (can overwrite olds)
 
         nonlocal password
         ANSI, ASCII, UTF8, UTF8_BOM = 'ansi', 'ascii', 'utf-8', 'utf-8-bom'  # these are the possible returns by encode_please() method
 
-        # > Generating the master key
+        #  Generating the master key, kdf, etc
         salt = files_properties[_filename]['salt']
         base_key = files_properties[_filename]['base_key']
         nonce0 = files_properties[_filename]['nonce0']
-        k0, _k1, _k2, _k3, _k4, _k5, k6 = kdf(base_key, nonce0)  # we'll need k0 for validation here, and possibly k5
+        _k0, _k1, _k2, _k3, _k4, _k5, k6 = kdf(base_key, nonce0)  # the only keys we need to use are _k0, _k6, validator and the mac
 
         with open(_filename, 'r+b') as file:  # open the current working file, to read and write as binary file
             file_data = file.read()  # get all data from the file
-            is_utf_file = True if encoding_please(data=file_data) in [ASCII, UTF8, UTF8_BOM] else False  # check utf-8
+            is_utf_file = is_utf(file_data)
             search_terms = []  # default value is no search terms
             if is_utf_file:  # when it is utf-8, get all words and MAC them all
-                words = get_all_words(file_data.decode(), 4, 12)  # get all valid words, case folded and NFC normalized
+                words = get_all_words(file_data.decode(), TERM_MIN, TERM_MAX)  # get all valid words, case folded and NFC normalized
                 search_terms = sorted(mac_term(word, k6) for word in words)  # MAC search terms
-                #print('search termq:', search_terms)
             #
             # create output file and encrypt data
-            validator = k0 # the validator that will be in .fenc-meta file
+            validator = _k0
             mac, encrypted_file_data = encrypt_file_data(file_data, base_key, nonce0)
-            # > make the dict of .fenc-meta
-            FENC_META = {
+            # make the dict of .fenc-meta
+            fenc_meta = {
                 'salt': binascii.hexlify(salt).decode(),
                 'validator': binascii.hexlify(validator).decode(),
                 'mac': binascii.hexlify(mac).decode(),
@@ -369,16 +319,17 @@ def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
             }
             file.seek(0)  # set the pointer to the start of the file
             file.write(encrypted_file_data)  # overwrite all file data
-            create_FENC_META()  # create the .fenc-meta file
+            create_fenc_meta()  # create the .fenc-meta file
             if o_flag:
-                print('-file "{}" has been encrypted successfully!'.format(_filename))
+                _msg_terms = 'with {} terms !'.format(len(search_terms))
+                print('-file "{}" has been encrypted successfully {}'.format(_filename, _msg_terms))
             return True
 
     if o_flag:  # debugging info
         print('Encryption method:')
 
     files_to_encrypt = _process_filenames_for_encryption(filenames)  # process all given files to see if they exist and not already encrypted
-    # > when there are 0 files, error and exit
+    # when there are 0 files, error and exit
     valid_files_count = len(files_to_encrypt)
     if valid_files_count == 0:
         print('Error: there are no files to encrypt!')
@@ -395,7 +346,7 @@ def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
 
     files_properties = {}
     for file_name in files_to_encrypt:
-        # > Generating the master key
+        #  Generating the master key, kdf, etc
         _salt = secrets.token_bytes(16)  # random salt for each file
         _master_key = hashlib.pbkdf2_hmac('sha256', password.encode(), _salt, 250000, 32)
         _base_key = _master_key[:16]
@@ -407,7 +358,7 @@ def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
             'nonce0': _nonce0
         }
 
-    # > j flag: when -j was declared
+    #  j flag: when -j was declared
     if j_flag:
         print('The requested data as JSON:')
         j_flag_output = {fname: binascii.hexlify(fvalues['master_key']).decode() for fname, fvalues in files_properties.items()}
@@ -421,7 +372,7 @@ def encrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
         except Exception as e:
             fail_counter += 1
             print('Unexpected error with file "{}" says : {}'.format(file_name, e))  # this error might raise if the file is already opened by another task
-    print('Encryption is completed on {} files, with {} error{}'.format(len(files_to_encrypt), fail_counter, 's' if fail_counter > 1 else ''))
+    print('Encryption is completed on {} files, with {} error{}\n'.format(len(files_to_encrypt), fail_counter, 's' if fail_counter > 1 else ''))
 
 
 def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
@@ -429,36 +380,37 @@ def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
     def decrypt_file(_filename: str):
         # Lets decrypt, check validation first and MACs, handle removal of metadata
 
-        def delete_FENC_META():
+        def delete_fenc_meta():
             #deletes the .fenc-meta file of the current file
             nonlocal _filename  # just declaring that these vars are not on this scope
-            os.remove(FENC_META_STARTS + _filename)
+            os.remove(fenc_meta_STARTS + _filename)
 
         nonlocal files_metadata, files_properties
         file_metadata = files_metadata[_filename]  # extract metadata of this file
-        file_properties = files_properties[_filename]  # extract properties for of file
-        # > open file
+        file_properties = files_properties[_filename]  # extract properties of file
+        #  open file
         with open(_filename, 'r+b') as file:
             file_data = file.read()  # get all file data
             k0, k1, k2, k3, k4, k5, k6 = kdf(file_properties['base_key'], file_properties['nonce'])
             mac = hmac.new(k5, file_data, hashlib.sha256).digest()
-            # > decrypt data and get the MAC
+            #  decrypt data and get the MAC
             if binascii.hexlify(mac).decode() == file_metadata['mac']:
                 file.seek(0)  # point to the top of the file
                 plaintext = decrypt_file_data(file_data, file_properties['base_key'], file_properties['nonce'])
                 file.write(plaintext)  # overwrite all data
-                delete_FENC_META()  # remove metafile
+                delete_fenc_meta()  # remove metafile
                 if o_flag:
                     print('-file "{}" has been decrypted successfully!'.format(_filename))
                 return True
             else:
                 print('MAC did not validate for: {}'.format(_filename))
+                return False
 
     if o_flag:
         print('Decryption method:')
 
     files_to_decrypt = _process_filenames_for_decryption(filenames)
-    # > when there are 0 files, error and exit
+    #  when there are 0 files, error and exit
     valid_files_count = len(files_to_decrypt)
     if valid_files_count == 0:
         print('Error: there are no files to decrypt!')
@@ -473,35 +425,35 @@ def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
 
     password = _input_a_password()
 
-    # > Generate the password validator and key schedule for each file
+    #  Generate the password validator and key schedule for each file
     files_metadata = {}  # filenames as keys, .fenc-meta info as values (after converting them into python dictionary)
     files_properties = {}  # filenames as keys, validators and key schedule as values
-    # > loop all files needs to be decrypted
+    # Loop all files needing to be decrypted
     for file_name in files_to_decrypt:
         try:
-            fencmeta_file_name = FENC_META_STARTS + file_name  # generate the .fenc-meta file name
-            with open(fencmeta_file_name, 'r') as FENC_META_file:
-                files_metadata[file_name] = json.loads(FENC_META_file.read())  # read .fenc-meta file data
+            fencmeta_file_name = fenc_meta_STARTS + file_name  # generate the .fenc-meta file name
+            with open(fencmeta_file_name, 'r') as fenc_meta_file:
+                files_metadata[file_name] = json.loads(fenc_meta_file.read())  # read .fenc-meta file data
             #
             salt = bytes.fromhex(files_metadata[file_name]['salt'])  # read the salt from .fenc-meta file
-            # > Generate the master key and other keys and validator from given password and recovered salt
+            # Generate the master key and other keys and validator from given password and recovered salt
             master_key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 250000, 32)
             base_key = master_key[:16]
-            nonce0 = master_key[16:]
-            k0, _k1, _k2, _k3, _k4, _k5, k6 = kdf(base_key, nonce0)  # we need to use is k0, the validator and k6, the mac
+            nonce = master_key[16:]
+            k0, k1, k2, k3, k4, k5, k6 = kdf(base_key, nonce)
             validator = k0
             files_properties[file_name] = {  # save these keys to be used later to compare and decrypt the files
                 'salt': salt,
                 'master_key': master_key,
                 'base_key': base_key,
-                'nonce': nonce0,
+                'nonce': nonce,
                 'validator': binascii.hexlify(validator).decode(),  # this one is used just for comparing
             }
         except Exception as e:
             print('Cannot perform metadata processing with file "{}"'.format(file_name))
             print('    Message says: {}'.format(e))
 
-    # > if -j flag is True, Show a dict of keys as filenames, and hex-encoded 32-byte output of PBKDF2 (master key) associated with each file
+    #  if -j flag is True, Show a dict of keys as filenames, and hex-encoded 32-byte output of PBKDF2 (master key) associated with each file
     if j_flag:
         # create a dictionary of filenames as keys, and as values the hex-encoded 32-byte output of PBKDF2 associated with each file
         # from the current given password, master key needs to be hexlified
@@ -509,9 +461,7 @@ def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
         print('The requested data as JSON:')
         print(json.dumps(j_flag_output, indent=4))
 
-    # > Compare password validator and error with no decryption if not match
-    # compare validator that just created by current password with the one in metadata, of each file
-    # and keep just the matched files in "validated_files", and throw error files to "unvalidated_files"
+    # Compare password validator and error with no decryption if not match
     validated_files = []
     unvalidated_files = []
     for file_name in files_to_decrypt:
@@ -530,31 +480,95 @@ def decrypt(o_flag: bool, j_flag: bool, filenames: Sequence[str]):
     fail_counter = 0
     for filename in validated_files:
         try:
-            decrypt_file(filename)
+            if not decrypt_file(filename):
+                fail_counter += 1
         except Exception as e:
+            fail_counter += 1
             print('Unexpected error with file "{}" says : {}'.format(filename, e))
-    print('Decryption is completed on {} files, with {} error{}'.format(len(validated_files), fail_counter, 's' if fail_counter > 1 else ''))
+    print('Decryption is completed on {} files, with {} error{}\n'.format(len(validated_files), fail_counter, 's' if fail_counter > 1 else ''))
+
+
+##############################################################################################################################
+#  Search... If it works....
+##############################################################################################################################
 
 
 def search(o_flag: bool, j_flag: bool, terms: Sequence[str]):
+    # see if there are given terms to look for, if not, exit with message
+    if len(terms) == 0:
+        print('Can not perform search, No term was given.\n')
+        return
+    # check the length of entered terms, if no valid exit with message
+    for trm_ in terms:
+        if len(trm_) < TERM_MIN or len(trm_) > TERM_MAX:
+            print('Search terms must be between {} and {} length long!\n'.format(TERM_MIN, TERM_MAX))
+            return
     if o_flag:
         print('Searching method:')
-        print('  search terms: "' + '", "'.join(terms) + '"')
+        print('  Search terms: "' + '", "'.join(terms) + '"')
 
-    files_to_search = _get_files(FENC_META_files=True)
+    files_to_search = _get_files(fenc_meta_files=True)  # get just .fenc-meta. files in current dir
     valid_files_count = len(files_to_search)
     if valid_files_count == 0:
-        print('Error: there are no files to perform the search operation!')
-    elif o_flag:
+        print('Error: there are no files to perform the search operation!\n')
+        return
+    if o_flag:
         print('  Files found to search: {}'.format(valid_files_count))
 
     password = _input_a_password()
 
-    # If password validator for a file doesn't match, warn to stderr, one line per file that fails
-    # For each file where the password validator did match, perform the search operation
+    search_matched_files = []  # contains all files which has at least one search term, so it matches
+    requested_data = {}
+    for meta_file_name in files_to_search:
+        file_name = meta_file_name.replace(fenc_meta_STARTS, '')
+        try:
+            fencmeta_file_name = meta_file_name  # generate the .fenc-meta file name
+            with open(fencmeta_file_name, 'r') as fenc_meta_file:
+                file_metadata = json.loads(fenc_meta_file.read())  # read .fenc-meta file data
+            # Generating password validator for each file as noted
+            salt = bytes.fromhex(file_metadata['salt'])  # read the salt from .fenc-meta file
+            master_key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 250000, 32)
+            base_key = master_key[:16]
+            nonce = master_key[16:]
+            k0, _k1, _k2, _k3, _k4, k5, k6 = kdf(base_key, nonce)
+            validator = k0
+            # If password validator for a file doesn't match, warn to stderr, one line per file that fails.
+            if file_metadata['validator'] != binascii.hexlify(validator).decode():
+                print('  Password validator for file "{}" did not match'.format(file_name))
+                continue
+            else:
+                # For each file where the password validator did match, perform the search operation
+                requested_data[file_name] = binascii.hexlify(master_key).decode()  # save the -j flag output to print out later outside the loop
+                maced_terms = [mac_term(trm, k6) for trm in terms]  # mac search terms for this current file
+                has_all_terms = True
+                for term in maced_terms:  # look for matching term in the current file's metadata terms
+                    if term not in file_metadata['terms']:  # if a search term not found, set the variable to False to ignore this file
+                        has_all_terms = False
+                        break  # by breaking this loop, you stop searching and moving on to next file
+                if has_all_terms:
+                    search_matched_files.append(file_name)  # add current file only when all terms match
+        except Exception as e:
+            print('Cannot perform metadata processing with file "{}"'.format(file_name))
+            print('    Message says: {}'.format(e))
+    #
     # If -j flag is given, output key info only for files the password validator matches, and before providing output
+    if j_flag:
+        print('The requested data as JSON:')
+        print(json.dumps(requested_data, indent=4))
     # For each file matches, output one line to stdout for each match indicating filename and nothing else
     # If no files match the search term you may optionally output error to stderr
+    if len(search_matched_files) == 0:
+        print('  Error: No matches found.\n')
+    else:
+        print('Searching Result:')
+        [print('{}'.format(name)) for name in search_matched_files]
+        print()
+
+
+##############################################################################################################################
+#  Director, kicked off from argparse arguments collection
+##############################################################################################################################
+
 
 
 def director(args: Namespace):
@@ -566,16 +580,16 @@ def director(args: Namespace):
     elif args.s:
         search(args.o, args.j, args.P)
     else:
-        # > This error shouldn't appear, if it did, please check the functionality of setting a default flag when None was declared
+        # This error shouldn't appear, if it did, please check the functionality of setting a default flag when None was declared
         raise RuntimeError('Error: no operator has been used!')
 
 
 if __name__ == '__main__':
 
-    # get arguments ready to parse
+    # getting arguments ready to parse
     sys_args = sys.argv[1:]
 
-    # > parse the script arguments with ArgumentParser
+    #  parsing the script arguments with ArgumentParser
     parsed_args = parser.parse_args(sys_args)
 
     # set default -d if no operator arguments
@@ -584,9 +598,13 @@ if __name__ == '__main__':
 
     # check if only one of (e, d, s) was declared, error otherwise
     declared_eds_flags = sum((parsed_args.s, parsed_args.d, parsed_args.e))
-    #error_msg = None
-    if declared_eds_flags > 1:
+    error_msg = None
+    if declared_eds_flags < 1:
+        error_msg = 'Error: no flags was declared, this error shouldn\'t exist, please check your program code!'
+    elif declared_eds_flags > 1:
         error_msg = 'Error: only one operator flag can be used (-e or -d or -s)!'
+    if error_msg:
+        raise ValueError(error_msg)
 
     # start our function calls as per request from args
     director(parsed_args)
